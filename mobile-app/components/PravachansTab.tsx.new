@@ -1,0 +1,244 @@
+import { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
+  Text,
+  View,
+} from "react-native";
+import { ChevronDown, PlayCircle, Video, X } from "lucide-react-native";
+import YoutubePlayer from "react-native-youtube-iframe";
+
+import { useCollection } from "../src/lib/useFirestore";
+import { parseYouTubeId, youTubeThumb } from "../src/lib/youtube";
+import type { Pravachan } from "../../shared/types";
+
+/**
+ * Pravachans tab — lists every video and plays the selected one inside the
+ * app using `react-native-youtube-iframe` (a YouTube iframe wrapper around
+ * react-native-webview).
+ */
+export function PravachansTab() {
+  const { data, loading, error, refresh } = useCollection<Pravachan>(
+    "pravachans",
+    { orderByField: "order", orderDir: "asc", limit: 100 }
+  );
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [active, setActive] = useState<Pravachan | null>(null);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
+
+  if (loading && !data) {
+    return (
+      <View className="mt-16 items-center">
+        <ActivityIndicator color="#B8336A" />
+        <Text className="mt-3 text-sm text-zinc-500">
+          Loading pravachans…
+        </Text>
+      </View>
+    );
+  }
+  if (error && !data) {
+    return (
+      <Text className="mt-6 text-sm text-red-500">
+        Could not load: {error.message}
+      </Text>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <View className="mt-16 items-center">
+        <Video color="#9CA3AF" size={28} />
+        <Text className="mt-3 text-sm italic text-zinc-500">
+          No pravachans yet.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#B8336A"
+            colors={["#B8336A", "#F4A261"]}
+          />
+        }
+        renderItem={({ item }) => {
+          const videoId = parseYouTubeId(item.youtubeUrl);
+          return (
+            <Pressable
+              onPress={() => videoId && setActive(item)}
+              disabled={!videoId}
+              className="mb-3 flex-row items-center overflow-hidden rounded-2xl border border-primary/10 bg-white p-3 active:opacity-80"
+            >
+              {videoId ? (
+                <View className="relative h-16 w-24 overflow-hidden rounded-lg">
+                  <Image
+                    source={{ uri: youTubeThumb(videoId) }}
+                    className="h-full w-full"
+                    resizeMode="cover"
+                  />
+                  <View className="absolute inset-0 items-center justify-center bg-black/15">
+                    <PlayCircle color="#fff" size={28} />
+                  </View>
+                </View>
+              ) : (
+                <View className="h-16 w-24 items-center justify-center rounded-lg bg-zinc-100">
+                  <Video color="#9CA3AF" size={22} />
+                </View>
+              )}
+
+              <View className="ml-3 flex-1">
+                <Text
+                  className="text-sm font-semibold text-zinc-900"
+                  numberOfLines={2}
+                >
+                  {item.title}
+                </Text>
+                {item.speaker ? (
+                  <Text
+                    className="mt-0.5 text-xs text-zinc-500"
+                    numberOfLines={1}
+                  >
+                    {item.speaker}
+                  </Text>
+                ) : null}
+                {!videoId ? (
+                  <Text className="mt-1 text-[10px] uppercase tracking-wider text-red-500">
+                    Invalid YouTube URL
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+
+      <PravachanPlayer
+        pravachan={active}
+        onClose={() => setActive(null)}
+      />
+    </>
+  );
+}
+
+/* ----------------------------------------------------------- */
+
+function PravachanPlayer({
+  pravachan,
+  onClose,
+}: {
+  pravachan: Pravachan | null;
+  onClose: () => void;
+}) {
+  const [playing, setPlaying] = useState(true);
+  const screenWidth = Dimensions.get("window").width;
+  const playerHeight = Math.round((screenWidth * 9) / 16);
+
+  const videoId = pravachan ? parseYouTubeId(pravachan.youtubeUrl) : null;
+  const visible = !!pravachan && !!videoId;
+
+  const onStateChange = useCallback((state: string) => {
+    if (state === "ended") setPlaying(false);
+  }, []);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={() => {
+        setPlaying(false);
+        onClose();
+      }}
+      transparent
+      statusBarTranslucent
+    >
+      <View className="flex-1 bg-black/85 justify-end">
+        <View className="rounded-t-3xl bg-white pb-8 pt-3">
+          <View className="mb-2 flex-row items-center px-4">
+            <View className="h-1 w-12 self-center rounded-full bg-zinc-300" />
+          </View>
+          <View className="flex-row items-start px-4">
+            <View className="flex-1 pr-2">
+              <Text className="text-base font-bold text-primary" numberOfLines={2}>
+                {pravachan?.title}
+              </Text>
+              {pravachan?.speaker ? (
+                <Text className="mt-0.5 text-xs text-zinc-500">
+                  {pravachan.speaker}
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              onPress={() => {
+                setPlaying(false);
+                onClose();
+              }}
+              hitSlop={12}
+              className="h-9 w-9 items-center justify-center rounded-full bg-zinc-100 active:opacity-70"
+            >
+              <X color="#52525b" size={20} />
+            </Pressable>
+          </View>
+
+          <View
+            className="mt-3 overflow-hidden bg-black"
+            style={{ width: screenWidth, height: playerHeight }}
+          >
+            {videoId ? (
+              <YoutubePlayer
+                key={videoId}
+                videoId={videoId}
+                height={playerHeight}
+                width={screenWidth}
+                play={playing}
+                onChangeState={onStateChange}
+                webViewProps={{
+                  allowsInlineMediaPlayback: true,
+                  mediaPlaybackRequiresUserAction: false,
+                }}
+              />
+            ) : null}
+          </View>
+
+          {pravachan?.description ? (
+            <Text className="mt-3 px-4 text-xs leading-5 text-zinc-700">
+              {pravachan.description}
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={() => {
+              setPlaying(false);
+              onClose();
+            }}
+            className="mx-4 mt-4 flex-row items-center justify-center rounded-full bg-primary py-3 active:opacity-80"
+          >
+            <ChevronDown color="#fff" size={18} />
+            <Text className="ml-2 text-sm font-semibold text-white">Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}

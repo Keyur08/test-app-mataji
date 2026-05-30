@@ -1,5 +1,5 @@
 # GeyMatiMataJiApp/apphosting.yaml
-
+runtime: nodejs
 runConfig:
   # 1. Keep rootDirectory pointing to / so Cloud Build can read your /shared folder files
   rootDirectory: /

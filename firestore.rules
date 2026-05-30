@@ -1,0 +1,281 @@
+// Firestore Security Rules for Gey Mati Mata Ji
+// ----------------------------------------------------------------------------
+// Design summary
+//   • Public content collections (panchang_updates, daily_quotes, texts_library,
+//     bhajans, pravachans, gallery_photos, news_events) are world-readable but
+//     only writable by admins.
+//   • Admin identity is data-driven: a UID is considered an admin if a
+//     document exists at `admins/{uid}` (created manually via the Firebase
+//     console or by another admin). This lets you grant/revoke admin access
+//     without redeploying rules.
+//   • `registrations` (Aahar Daan) — any user (signed in or not) can create
+//     a new doc, but no one on the client can read, update, or delete others'
+//     submissions. The admin dashboard uses the Admin SDK which bypasses
+//     these rules.
+//   • `push_tokens` — devices may register/update only their own token doc
+//     (docId == token). Admins manage cleanup via the Admin SDK.
+//   • `notification_broadcasts` — broadcast history is admin-only.
+//   • Everything else is denied by default.
+// ----------------------------------------------------------------------------
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------- Helpers --------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // -------------------- Public, admin-managed content --------------------
+    // Anyone can read; only admins can create / update / delete.
+    match /panchang_updates/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /daily_quotes/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /texts_library/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /bhajans/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /pravachans/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /reels/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Mobile app stores gallery photos in `gallery_photos`; we also include
+    // the shorter `gallery` name in case it's ever used.
+    match /gallery_photos/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /gallery_albums/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /gallery/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /news_events/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Home screen story circles (Instagram-style rail).
+    match /home_stories/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Home screen hero carousel slides.
+    match /home_slides/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // App-wide configuration documents (e.g. Aahar Daan QR card).
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Legacy/auxiliary daily collection used by some clients.
+    match /app_state/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /gyeyvani/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------- Aahar Daan registrations --------------------
+    // Anyone (auth or anon) may submit. No client may read, update, or
+    // delete — admins access via the Admin SDK which bypasses rules.
+    match /registrations/{docId} {
+      allow create: if
+        // Required fields
+        request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 7
+        && request.resource.data.phone.size() <= 30
+        && request.resource.data.location is string
+        && request.resource.data.location.size() >= 1
+        && request.resource.data.location.size() <= 300
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        // Server-set timestamp must be present
+        && request.resource.data.createdAt == request.time
+        // Cap payload size
+        && request.resource.data.size() <= 20;
+
+      allow read, update, delete: if isAdmin();
+    }
+
+    // -------------------- Mandatory app-onboarding user profiles --------------------
+    // The doc id IS the devotee's 10-digit mobile number, so the same person
+    // gets ONE record across app re-installs, second devices and the web.
+    // The `uids` array tracks every anonymous Firebase Auth uid that has
+    // claimed this profile; any of those uids may read/update the doc.
+    //
+    // On create we require the caller's uid to be present in `uids` (and
+    // `uid` to equal it). On update we require the caller's uid to already
+    // be in the *existing* doc's `uids` OR be added via arrayUnion to the
+    // incoming `uids`.
+    match /users/{mobile} {
+      function uidsContains(data, u) {
+        return data.uids is list && data.uids.hasAny([u]);
+      }
+
+      allow read: if isAdmin()
+        || (isSignedIn() && resource != null && uidsContains(resource.data, request.auth.uid));
+      allow list: if isAdmin();
+
+      allow create: if isSignedIn()
+        && request.resource.data.mobile == mobile
+        && mobile.matches('^[6-9][0-9]{9}$')
+        && uidsContains(request.resource.data, request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.location.size() >= 1
+        && request.resource.data.location.size() <= 300
+        && request.resource.data.dob is string
+        && request.resource.data.dob.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.gender in ['male', 'female', 'other']
+        && request.resource.data.maritalStatus in ['married', 'unmarried']
+        && request.resource.data.size() <= 20;
+
+      allow update: if isSignedIn()
+        // Caller is already a claimed device, OR they are claiming now via arrayUnion.
+        && (uidsContains(resource.data, request.auth.uid)
+            || uidsContains(request.resource.data, request.auth.uid))
+        && request.resource.data.mobile == mobile
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.location.size() >= 1
+        && request.resource.data.location.size() <= 300
+        && request.resource.data.dob is string
+        && request.resource.data.dob.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.gender in ['male', 'female', 'other']
+        && request.resource.data.maritalStatus in ['married', 'unmarried']
+        && request.resource.data.size() <= 20;
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- Daily नियम (vow of the day) --------------------
+    // Admin publishes one doc per day at `daily_niyam/{YYYY-MM-DD}`.
+    // Devotees opt-in by creating `daily_niyam/{date}/accepts/{mobile}`
+    // where the doc id is their own mobile number (which is also their
+    // `users/{mobile}` id). We don't validate that the user owns the
+    // mobile here — they already had to register, and a malicious user
+    // gains nothing by accepting on someone else's behalf since the
+    // record is admin-visible only and not used for any reward.
+    match /daily_niyam/{date} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /accepts/{mobile} {
+        // Anyone signed in (i.e. has finished anon-auth) may opt-in once
+        // per day. Doc id must look like a 10-digit Indian mobile.
+        allow create: if isSignedIn()
+          && mobile.matches('^[6-9][0-9]{9}$')
+          && request.resource.data.mobile == mobile
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.acceptedAt == request.time
+          && request.resource.data.size() <= 6;
+        // Devotee can re-read their own acceptance to know they've opted in.
+        allow read: if isAdmin()
+          || (isSignedIn() && resource != null
+              && resource.data.uid == request.auth.uid);
+        allow list, update, delete: if isAdmin();
+      }
+    }
+
+    // -------------------- User mobile index (public lookup) --------------------
+    // Tiny existence-only index used by the mobile app's /login screen to
+    // decide whether a typed mobile number is already registered:
+    //   • If `user_mobile_index/{mobile}` exists → known user → login flow
+    //     proceeds to claim the device and go straight to home.
+    //   • If it does NOT exist → new user → forward to /register without
+    //     ever creating an anonymous Firebase auth user.
+    // The doc intentionally contains NO personal data — only a creation
+    // timestamp — so it's safe to allow public reads. Writes are gated:
+    // a signed-in user may create exactly their own index entry, and only
+    // admins can update/delete.
+    match /user_mobile_index/{mobile} {
+      allow read: if true;
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
+        && mobile.matches('^[6-9][0-9]{9}$')
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.size() <= 2;
+      allow update, delete: if isAdmin();
+    }
+
+    // -------------------- Push tokens --------------------
+    // A device writes its own token doc. The docId IS the token, so we only
+    // permit writes where the body's `token` matches the docId. Listing /
+    // reading the whole collection is admin-only.
+    match /push_tokens/{tokenId} {
+      allow read, list, delete: if isAdmin();
+      allow create, update: if
+        request.resource.data.token is string
+        && request.resource.data.token == tokenId
+        && request.resource.data.size() <= 15;
+    }
+
+    // -------------------- Notification broadcast history --------------------
+    match /notification_broadcasts/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // -------------------- Admin roster --------------------
+    // Admins may read the roster (so the dashboard can show it) but only
+    // existing admins may modify it. To bootstrap the very first admin,
+    // create the document manually in the Firebase Console.
+    match /admins/{uid} {
+      allow read: if isAdmin() || request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+
+    // -------------------- Default deny --------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

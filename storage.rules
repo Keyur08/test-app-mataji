@@ -1,0 +1,63 @@
+// Firebase Storage Security Rules for Gey Mati Mata Ji
+// ----------------------------------------------------------------------------
+// Mirrors the Firestore policy:
+//   • Anyone can read media (so the mobile app can stream audio + images
+//     without auth).
+//   • Only admins (documented in Firestore at `admins/{uid}`) may upload,
+//     overwrite, or delete files.
+// ----------------------------------------------------------------------------
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.uid)
+        );
+    }
+
+    // Public folders managed by the admin dashboard.
+    match /bhajans/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 50 * 1024 * 1024  // 50 MB
+        && (
+          request.resource.contentType.matches('audio/.*')
+          || request.resource.contentType.matches('image/.*')
+        );
+    }
+
+    match /gallery/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 15 * 1024 * 1024  // 15 MB
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /pravachans/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admin-managed config images & audio (daily popup, jaap mantra
+    // recitations, branding, etc.). Images up to 10 MB, audio up to 30 MB.
+    match /app_config/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && (
+          (request.resource.contentType.matches('image/.*')
+            && request.resource.size < 10 * 1024 * 1024)
+          || (request.resource.contentType.matches('audio/.*')
+            && request.resource.size < 30 * 1024 * 1024)
+        );
+    }
+
+    // Default deny.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

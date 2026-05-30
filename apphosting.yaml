@@ -8,9 +8,9 @@ runConfig:
   cpu: 1
   memoryMiB: 512
 
-# Explicitly switches context inside the build workspace container
+# Explicitly installs local subfolder node_modules before compiling code
 scripts:
-  buildCommand: cd admin-dashboard && npm run build
+  buildCommand: cd admin-dashboard && npm install && npm run build
   runCommand: cd admin-dashboard && npm run start
 
 env:

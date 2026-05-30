@@ -1,0 +1,14 @@
+{
+  "name": "geymatimataji-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "admin-dashboard",
+    "shared",
+    "mobile-app"
+  ],
+  "scripts": {
+    "build:admin": "npm run build --workspace=admin-dashboard",
+    "start:admin": "npm run start --workspace=admin-dashboard"
+  }
+}

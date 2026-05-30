@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname, ".."),
   },
+  output: "standalone",
+  transpilePackages: ["../shared"],
 };
 
 export default nextConfig;

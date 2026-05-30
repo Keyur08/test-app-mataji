@@ -8,7 +8,7 @@
     "mobile-app"
   ],
   "scripts": {
-    "build:admin": "npm run build --workspace=admin-dashboard",
-    "start:admin": "npm run start --workspace=admin-dashboard"
+    "build:admin": "npm run build --prefix admin-dashboard",
+    "start:admin": "npm start --prefix admin-dashboard"
   }
 }

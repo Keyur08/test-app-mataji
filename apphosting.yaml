@@ -1,17 +1,17 @@
 # GeyMatiMataJiApp/apphosting.yaml
 runtime: nodejs
+
 runConfig:
-  # 1. Keep rootDirectory pointing to / so Cloud Build can read your /shared folder files
   rootDirectory: /
   minInstances: 0
   maxInstances: 1
   cpu: 1
   memoryMiB: 512
 
-# 2. Tell Firebase to step inside your dashboard directory before building the application assets
+# Executes commands directly using the workspace parameters defined above
 scripts:
-  buildCommand: cd admin-dashboard && npm run build
-  runCommand: cd admin-dashboard && npm run start
+  buildCommand: npm run build:admin
+  runCommand: npm run start:admin
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY

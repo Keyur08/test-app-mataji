@@ -1,28 +1,22 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import type { NextConfig } from "next";
+// @ts-check
 
-// 1. Safe path resolution helper for ES Modules / Next.js configurations
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, "..");
-
-const nextConfig: NextConfig = {
-  // Turbopack defaults its workspace root to the Next.js project folder, so we
-  // explicitly point it at the repo root to allow that resolution.
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Turbopack workspace root setup
   turbopack: {
-    root: projectRoot,
+    root: path.resolve(__dirname, ".."),
   },
 
   experimental: {
     // 🔑 FORCES NEXT.JS TO EMIT ASSET TRAILS RELATIVE TO MONOREPO ROOT
-    outputFileTracingRoot: projectRoot,
+    outputFileTracingRoot: path.resolve(__dirname, ".."),
   },
 
   output: "standalone",
 
-  // 🔑 FIXED: Transpile packages expects the alias package name, NOT the relative directory path
-  transpilePackages: ["@shared"],
+  // Tells Next.js to compile your shared directory code natively
+  transpilePackages: ["../shared"],
 };
 
-export default nextConfig;
+module.exports = nextConfig;

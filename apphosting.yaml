@@ -10,8 +10,8 @@ runConfig:
 
 # Explicitly installs local subfolder node_modules before compiling code
 scripts:
-  buildCommand: cd admin-dashboard && npm install && npm run build
-  runCommand: cd admin-dashboard && npm run start
+  buildCommand: npm install --prefix admin-dashboard && npm run build --prefix admin-dashboard
+  runCommand: npm run start --prefix admin-dashboard
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY

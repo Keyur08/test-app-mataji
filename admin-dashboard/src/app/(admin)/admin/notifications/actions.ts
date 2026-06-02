@@ -43,33 +43,41 @@ function chunk<T>(arr: T[], size: number): T[][] {
 async function loadTokens(): Promise<StoredToken[]> {
   const snap = await adminDb.collection("push_tokens").get();
   return snap.docs
-    .map((d) => {
-      const data = d.data() as Partial<StoredToken>;
-      const token = data.token || d.id;
-      if (!token) return null;
-      // Heuristic: any token that looks like ExponentPushToken[…] is Expo.
-      const type: StoredToken["type"] =
-        data.type ?? (token.startsWith("ExponentPushToken") ? "expo" : "fcm");
-      return { token, type };
-    })
-    .filter((t): t is StoredToken => !!t);
+      .map((d) => {
+        const data = d.data() as Partial<StoredToken>;
+        const token = data.token || d.id;
+        if (!token) return null;
+        // Heuristic: any token that looks like ExponentPushToken[…] is Expo.
+        const type: StoredToken["type"] =
+            data.type ?? (token.startsWith("ExponentPushToken") ? "expo" : "fcm");
+        return { token, type };
+      })
+      .filter((t): t is StoredToken => !!t);
 }
 
 async function removeInvalidTokens(tokens: string[]): Promise<void> {
   if (tokens.length === 0) return;
   const batch = adminDb.batch();
   tokens.forEach((t) =>
-    batch.delete(adminDb.collection("push_tokens").doc(t))
+      batch.delete(adminDb.collection("push_tokens").doc(t))
   );
   await batch.commit();
 }
 
 async function sendViaFcm(
-  tokens: string[],
-  payload: BroadcastInput
+    tokens: string[],
+    payload: BroadcastInput
 ): Promise<{ success: number; failure: number; invalid: string[]; errors: string[] }> {
   if (tokens.length === 0)
     return { success: 0, failure: 0, invalid: [], errors: [] };
+// ⚠️ ADD THIS PROTECTION GUARD BLOCK:
+  if (!adminApp) {
+    console.error("Firebase Admin App is not initialized.");
+    return { success: 0, failure: 0, invalid: [], errors: ["Admin SDK not ready"] };
+  }
+
+// TypeScript now guarantees that adminApp is defined for this call
+
   const messaging = getMessaging(adminApp);
   let success = 0;
   let failure = 0;
@@ -111,8 +119,8 @@ async function sendViaFcm(
       if (!r.success && r.error) {
         const code = r.error.code;
         if (
-          code === "messaging/invalid-registration-token" ||
-          code === "messaging/registration-token-not-registered"
+            code === "messaging/invalid-registration-token" ||
+            code === "messaging/registration-token-not-registered"
         ) {
           invalid.push(group[i]);
         }
@@ -125,8 +133,8 @@ async function sendViaFcm(
 }
 
 async function sendViaExpo(
-  tokens: string[],
-  payload: BroadcastInput
+    tokens: string[],
+    payload: BroadcastInput
 ): Promise<{ success: number; failure: number; invalid: string[]; errors: string[] }> {
   if (tokens.length === 0)
     return { success: 0, failure: 0, invalid: [], errors: [] };
@@ -180,8 +188,8 @@ async function sendViaExpo(
         } else {
           failure += 1;
           if (
-            tic.details?.error === "DeviceNotRegistered" ||
-            tic.details?.error === "InvalidCredentials"
+              tic.details?.error === "DeviceNotRegistered" ||
+              tic.details?.error === "InvalidCredentials"
           ) {
             invalid.push(group[i]);
           }
@@ -200,7 +208,7 @@ async function sendViaExpo(
 }
 
 export async function broadcastNotification(
-  input: BroadcastInput
+    input: BroadcastInput
 ): Promise<BroadcastResult> {
   const title = input.title?.trim();
   const body = input.body?.trim();

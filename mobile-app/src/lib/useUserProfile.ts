@@ -118,7 +118,15 @@ export function useUserProfile() {
 
   // 3) Subscribe to `users/{mobile}` once we know the mobile.
   useEffect(() => {
-    if (!mobile) return;
+    if (!mobile) {
+      // Sign-out path: the active mobile was cleared. Drop any cached
+      // profile and flip back to "missing" so the root layout sends the
+      // devotee through /login → /register instead of bouncing them to
+      // the home tabs on the stale "ready" status.
+      setProfile(null);
+      setStatus("missing");
+      return;
+    }
     const ref = doc(db, "users", mobile);
     const unsub = onSnapshot(
       ref,

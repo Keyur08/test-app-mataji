@@ -4,7 +4,8 @@
 // updates live for everyone via an `onSnapshot` subscription.
 
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ZoomableImage } from "./ZoomableImage";
 import {
   CheckCircle2,
   NotebookPen,
@@ -140,8 +141,9 @@ export function DailyNiyamCard() {
       }}
     >
       {niyam.imageUrl ? (
-        <Image
-          source={{ uri: niyam.imageUrl }}
+        <ZoomableImage
+          uri={niyam.imageUrl}
+          caption={niyam.title}
           style={{ width: "100%", height: 180 }}
           resizeMode="cover"
         />
@@ -210,6 +212,16 @@ export function DailyNiyamCard() {
               <Text className="ml-1.5 text-[12px] font-bold text-white">
                 Accepted
               </Text>
+              {/* Live count badge — keeps the social-proof visible
+                  even after the user accepts. */}
+              <View
+                className="ml-2 rounded-full px-2 py-0.5"
+                style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+              >
+                <Text className="text-[11px] font-extrabold text-white">
+                  {count}
+                </Text>
+              </View>
             </View>
           ) : (
             <Pressable
@@ -233,6 +245,21 @@ export function DailyNiyamCard() {
               >
                 {accepting ? "Saving…" : "नियम स्वीकार करें"}
               </Text>
+              {/* Live acceptance count badge — encourages action with
+                  social proof ("42 already accepted"). */}
+              {!accepting && count > 0 ? (
+                <View
+                  className="ml-2 rounded-full px-2 py-0.5"
+                  style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+                >
+                  <Text
+                    className="text-[11px] font-extrabold"
+                    style={{ color: theme.textOnPrimary }}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              ) : null}
             </Pressable>
           )}
         </View>

@@ -266,6 +266,25 @@ export default function ProfileScreen() {
   }
 
   function onSignOut() {
+    // `Alert.alert` on react-native-web is a single-button `window.alert`
+    // that never fires destructive `onPress` callbacks, so the sign-out
+    // never ran from the browser. Use the native `window.confirm` on web
+    // and the real Alert dialog on iOS / Android.
+    const doSignOut = async () => {
+      await setActiveMobile(null);
+      router.replace("/login" as never);
+    };
+    if (Platform.OS === "web") {
+      const ok =
+        typeof window !== "undefined" &&
+        typeof window.confirm === "function"
+          ? window.confirm(
+              "Sign out of this device? You'll be asked to enter your mobile number again the next time you open the app.",
+            )
+          : true;
+      if (ok) void doSignOut();
+      return;
+    }
     Alert.alert(
       "Sign out of this device?",
       "You'll be asked to enter your mobile number again the next time you open the app. Your data stays safe on the server.",
@@ -274,10 +293,7 @@ export default function ProfileScreen() {
         {
           text: "Sign out",
           style: "destructive",
-          onPress: async () => {
-            await setActiveMobile(null);
-            router.replace("/register" as never);
-          },
+          onPress: doSignOut,
         },
       ],
     );

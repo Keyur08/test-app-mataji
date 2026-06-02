@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  ActivityIndicator,
   Animated,
   Easing,
   Modal,
@@ -276,20 +277,35 @@ export default function JaapScreen() {
     };
   }, [audioPlayer]);
 
+  // Use `audioWanted` (user intent) — NOT `audioStatus.playing` — as the
+  // source of truth for the toggle. On native, `useAudioPlayerStatus` can
+  // lag a frame or two behind a `play()`/`pause()` call, which on the web
+  // build is essentially synchronous. Driving the toggle (and the button
+  // UI) off intent makes the native experience match the web one: instant
+  // icon/label flip, no double-tap getting the wrong branch.
   const toggleAudio = useCallback(() => {
     if (!selectedMantra.audioUrl) return;
-    if (audioStatus.playing) {
-      audioPlayer.pause();
-      setAudioWanted(false);
-    } else {
+    setAudioWanted((wanted) => {
       try {
-        audioPlayer.play();
-        setAudioWanted(true);
+        if (wanted) {
+          audioPlayer.pause();
+        } else {
+          // Re-seek to start so a fresh tap always begins the mantra
+          // cleanly (otherwise on native it may resume from a stale
+          // position after a long pause).
+          try {
+            audioPlayer.seekTo(0);
+          } catch {
+            // ignore
+          }
+          audioPlayer.play();
+        }
       } catch {
-        // ignore
+        // ignore — player not ready
       }
-    }
-  }, [audioPlayer, audioStatus.playing, selectedMantra.audioUrl]);
+      return !wanted;
+    });
+  }, [audioPlayer, selectedMantra.audioUrl]);
 
   // If the user switches to a mantra without audio, clear the "wanted" flag
   // so the icon doesn't stay in "playing" state.
@@ -483,15 +499,12 @@ export default function JaapScreen() {
               paddingVertical: 10,
               paddingHorizontal: 14,
               maxHeight: 110,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
+              justifyContent: "center",
             }}
           >
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingVertical: 2 }}
-              style={{ flex: 1 }}
             >
               <Text
                 style={{
@@ -505,34 +518,6 @@ export default function JaapScreen() {
                 {selectedMantra.text}
               </Text>
             </ScrollView>
-
-            {/* Play / pause — only if this mantra has audio */}
-            {selectedMantra.audioUrl ? (
-              <Pressable
-                onPress={toggleAudio}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  audioStatus.playing ? "Pause mantra audio" : "Play mantra audio"
-                }
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: audioStatus.playing
-                    ? theme.primary
-                    : theme.saffron + "33",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                {audioStatus.playing ? (
-                  <Pause color="#FFFFFF" size={18} />
-                ) : (
-                  <Play color={theme.primary} size={18} />
-                )}
-              </Pressable>
-            ) : null}
           </View>
 
           {/* Completed-mala pill */}
@@ -572,6 +557,121 @@ export default function JaapScreen() {
             </Text>
           </View>
         </View>
+
+        {/* ── Audio control bar (only when current mantra has audio) ── */}
+        {/* Single, guaranteed-readable color scheme for ALL states:
+            cream/white pill + dark primary text + primary-tinted icon chip.
+            Only the icon (play / pause / spinner) and the label text change
+            — never the foreground color — so the label is always visible. */}
+        {selectedMantra.audioUrl ? (() => {
+          // Drive the icon/label off user intent (`audioWanted`) so it
+          // flips instantly on tap — matching the web build. Only show
+          // the spinner if the user wants playback AND the native
+          // player hasn't actually started yet.
+          const wantsPlay = audioWanted;
+          const isLoading = wantsPlay && !audioStatus.playing;
+          const label = isLoading
+            ? "Loading…"
+            : wantsPlay
+              ? "Pause Mantra"
+              : "Play Mantra";
+          return (
+            <Pressable
+              onPress={toggleAudio}
+              accessibilityRole="button"
+              accessibilityLabel={
+                wantsPlay
+                  ? audioStatus.playing
+                    ? "Pause mantra audio"
+                    : "Loading mantra audio"
+                  : "Play mantra audio"
+              }
+              style={({ pressed }) => ({
+                // Android needs more breathing room between the mantra
+                // text card above and this pill — on iOS/web 10 looks
+                // fine, but on Android the pill visually hugs the card.
+                marginTop: Platform.OS === "android" ? 22 : 10,
+                alignSelf: "stretch",
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              {/* Inner row — Android reliably honors flexDirection on a
+                  plain View, but can be flaky when applied directly to
+                  Pressable. Keeping all layout here guarantees a single
+                  horizontal pill across iOS / Android / Web. */}
+              <View
+                style={{
+                  width: "100%",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 12,
+                  paddingHorizontal: 18,
+                  borderRadius: 999,
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 1.5,
+                  borderColor: wantsPlay
+                    ? theme.primary
+                    : theme.saffron + "AA",
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: wantsPlay ? 0.22 : 0.1,
+                  shadowRadius: 6,
+                  elevation: wantsPlay ? 3 : 2,
+                }}
+              >
+                {/* Circular icon chip */}
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    marginRight: 12, // use marginRight instead of `gap` — `gap` support on RN Android is patchy in older RN
+                    backgroundColor: wantsPlay
+                      ? theme.primary
+                      : theme.saffron + "33",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : wantsPlay ? (
+                    <Pause
+                      color="#FFFFFF"
+                      size={18}
+                      strokeWidth={2.5}
+                      fill="#FFFFFF"
+                    />
+                  ) : (
+                    <Play
+                      color={theme.primary}
+                      size={18}
+                      strokeWidth={2.5}
+                      fill={theme.primary}
+                      style={{ marginLeft: 2 }}
+                    />
+                  )}
+                </View>
+                {/* Label — flexShrink so a long label can't wrap onto a new
+                    row beneath the icon on Android. */}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    flexShrink: 1,
+                    color: theme.primary,
+                    fontSize: 15,
+                    fontWeight: "800",
+                    letterSpacing: 0.6,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })() : null}
 
         {/* ── Big tappable ring ──────────────────────────────────── */}
         <View
@@ -697,30 +797,34 @@ export default function JaapScreen() {
         </View>
 
         {/* ── Action buttons ───────────────────────────────────── */}
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-          <ActionButton
-            icon={<Undo2 color={theme.primary} size={18} />}
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 12,
+            marginTop: 12,
+            alignItems: "stretch",
+            justifyContent: "center",
+            alignSelf: "center",
+            width: "100%",
+            maxWidth: 360,
+          }}
+        >
+          <SideActionButton
+            icon={<Undo2 color={theme.primary} size={20} />}
             label="Undo"
             onPress={handleUndo}
-            color={theme.primary}
-            bg="#FFFFFF"
-            border={theme.primary + "55"}
+            theme={theme}
           />
-          <ActionButton
-            icon={<Target color="#FFFFFF" size={18} />}
-            label={`Target ${target}`}
+          <TargetActionButton
+            target={target}
             onPress={openTargetModal}
-            color="#FFFFFF"
-            bg={theme.primary}
-            border={theme.primary}
+            theme={theme}
           />
-          <ActionButton
-            icon={<RotateCcw color={theme.primary} size={18} />}
+          <SideActionButton
+            icon={<RotateCcw color={theme.primary} size={20} />}
             label="Reset"
             onPress={handleReset}
-            color={theme.primary}
-            bg="#FFFFFF"
-            border={theme.primary + "55"}
+            theme={theme}
           />
         </View>
       </View>
@@ -784,7 +888,7 @@ export default function JaapScreen() {
                 flexWrap: "wrap",
               }}
             >
-              {[27, 54, 108, 1008].map((preset) => (
+              {[9, 27, 54, 108, 1008].map((preset) => (
                 <Pressable
                   key={preset}
                   onPress={() => setTargetInput(String(preset))}
@@ -873,44 +977,161 @@ export default function JaapScreen() {
   );
 }
 
-// ─── Reusable action pill ──────────────────────────────────────────────────
-function ActionButton({
+// ─── Themed action buttons ─────────────────────────────────────────────────
+// Two tile styles that flank a hero "Target" pill. They lean on the saffron
+// + primary palette so they feel like they belong with the prayer ring above.
+
+type ThemeShape = {
+  primary: string;
+  saffron: string;
+  cream: string;
+  accent: string;
+};
+
+function SideActionButton({
   icon,
   label,
   onPress,
-  color,
-  bg,
-  border,
+  theme,
 }: {
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
-  color: string;
-  bg: string;
-  border: string;
+  theme: ThemeShape;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => ({
-        flex: 1,
-        flexDirection: "row",
+        width: 72,
         alignItems: "center",
         justifyContent: "center",
-        gap: 6,
         paddingVertical: 12,
-        paddingHorizontal: 8,
-        borderRadius: 12,
-        backgroundColor: bg,
+        borderRadius: 18,
+        backgroundColor: "#FFFFFF",
         borderWidth: 1,
-        borderColor: border,
-        opacity: pressed ? 0.85 : 1,
+        borderColor: theme.saffron + "55",
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: pressed ? 0.06 : 0.12,
+        shadowRadius: 8,
+        elevation: pressed ? 1 : 3,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
-      {icon}
-      <Text style={{ color, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: theme.saffron + "1F",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 6,
+        }}
+      >
+        {icon}
+      </View>
+      <Text
+        style={{
+          color: theme.primary,
+          fontWeight: "700",
+          fontSize: 11,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+        }}
+      >
         {label}
       </Text>
+    </Pressable>
+  );
+}
+
+function TargetActionButton({
+  target,
+  onPress,
+  theme,
+}: {
+  target: number;
+  onPress: () => void;
+  theme: ThemeShape;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Change target, currently ${target}`}
+      style={({ pressed }) => ({
+        flex: 1,
+        borderRadius: 18,
+        overflow: "hidden",
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: pressed ? 0.15 : 0.28,
+        shadowRadius: 10,
+        elevation: pressed ? 2 : 5,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
+    >
+      <View
+        style={{
+          borderRadius: 18,
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          backgroundColor: theme.primary,
+          borderWidth: 1,
+          borderColor: theme.saffron + "88",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+        }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.18)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.35)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Target color="#FFFFFF" size={20} />
+        </View>
+        <View style={{ alignItems: "flex-start" }}>
+          <Text
+            style={{
+              color: "#FFFFFF",
+              opacity: 0.85,
+              fontSize: 10,
+              fontWeight: "700",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Target
+          </Text>
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 20,
+              fontWeight: "800",
+              marginTop: 1,
+              letterSpacing: -0.3,
+            }}
+          >
+            {target}
+            <Text style={{ fontSize: 12, fontWeight: "600", opacity: 0.8 }}>
+              {"  beads"}
+            </Text>
+          </Text>
+        </View>
+      </View>
     </Pressable>
   );
 }

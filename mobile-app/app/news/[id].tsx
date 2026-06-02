@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
-  Image,
   RefreshControl,
   ScrollView,
   Text,
@@ -12,6 +11,7 @@ import { Calendar, CalendarDays, Megaphone, Newspaper } from "lucide-react-nativ
 
 import { useDoc } from "../../src/lib/useFirestore";
 import type { NewsEvent } from "../../../shared/types";
+import { ZoomableImage } from "../../components/ZoomableImage";
 
 type Kind = "announcement" | "event" | "news";
 
@@ -120,12 +120,12 @@ export default function NewsDetailScreen() {
             {/* Hero image (or themed gradient if no image) */}
             {item.imageUrl ? (
               <View className="overflow-hidden">
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  className="h-64 w-full"
+                <ZoomableImage
+                  uri={item.imageUrl}
+                  caption={item.title}
+                  style={{ width: "100%", height: 256 }}
                   resizeMode="cover"
                 />
-                <View className="absolute inset-0 bg-black/15" />
               </View>
             ) : (
               <View

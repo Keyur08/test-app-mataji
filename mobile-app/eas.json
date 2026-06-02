@@ -23,6 +23,14 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD0lfXZUbYQtKxQxgfgDMpt-7KD63bjKgk",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "://firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "gyeshreemataji",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "gyeshreemataji.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "932184806507",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:932184806507:web:8f2065b1650d4b405b0d2e"
       }
     },
     "production": {
@@ -33,6 +41,14 @@
       },
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD0lfXZUbYQtKxQxgfgDMpt-7KD63bjKgk",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "://firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "gyeshreemataji",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "gyeshreemataji.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "932184806507",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:932184806507:web:8f2065b1650d4b405b0d2e"
       }
     },
     "production-apk": {

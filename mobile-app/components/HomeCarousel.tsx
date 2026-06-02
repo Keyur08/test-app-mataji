@@ -18,6 +18,7 @@ import { router } from "expo-router";
 
 import { useCollection } from "../src/lib/useFirestore";
 import type { HomeSlide } from "../../shared/types";
+import { PhotoLightbox } from "./PhotoLightbox";
 
 const PRIMARY = "#B8336A";
 const SAFFRON = "#F4A261";
@@ -67,6 +68,7 @@ export function HomeCarousel() {
     Dimensions.get("window").width - 40 // minus screen px-5 on both sides
   );
   const [index, setIndex] = useState(0);
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const listRef = useRef<FlatList<HomeSlide>>(null);
 
   // Auto-advance every 4.5 seconds.
@@ -106,7 +108,13 @@ export function HomeCarousel() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumScrollEnd}
-        renderItem={({ item }) => <Slide slide={item} width={width} />}
+        renderItem={({ item, index: i }) => (
+          <Slide
+            slide={item}
+            width={width}
+            onZoom={() => setZoomIndex(i)}
+          />
+        )}
       />
 
       {/* Dots */}
@@ -129,24 +137,71 @@ export function HomeCarousel() {
           })}
         </View>
       )}
+      {zoomIndex != null && (
+        <PhotoLightbox
+          photos={slides.map((s) => ({
+            id: s.id,
+            imageUrl: s.imageUrl,
+            caption: s.title,
+          })) as never}
+          startIndex={zoomIndex}
+          visible={zoomIndex != null}
+          onClose={() => setZoomIndex(null)}
+        />
+      )}
     </View>
   );
 }
 
-function Slide({ slide, width }: { slide: HomeSlide; width: number }) {
+function Slide({
+  slide,
+  width,
+  onZoom,
+}: {
+  slide: HomeSlide;
+  width: number;
+  onZoom: () => void;
+}) {
   const tappable = !!(slide.linkType && slide.linkTarget);
-  const Wrapper: React.ElementType = tappable ? Pressable : View;
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!slide.imageUrl) return;
+    let cancelled = false;
+    Image.getSize(
+      slide.imageUrl,
+      (w, h) => {
+        if (!cancelled && w > 0 && h > 0) setNaturalRatio(w / h);
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [slide.imageUrl]);
+
+  // Card is 16:9. If the natural image is within ~12% of 16:9, use `cover`
+  // (no letterboxing). Otherwise fall back to `contain` against a soft
+  // saffron-tinted background so nothing is cropped.
+  const cardRatio = 16 / 9;
+  const closeEnough =
+    naturalRatio != null && Math.abs(naturalRatio - cardRatio) / cardRatio < 0.12;
+  const resizeMode: "cover" | "contain" =
+    naturalRatio == null ? "cover" : closeEnough ? "cover" : "contain";
+
+  const onPress = tappable ? () => handlePress(slide) : onZoom;
 
   return (
-    <Wrapper
-      onPress={tappable ? () => handlePress(slide) : undefined}
+    <Pressable
+      onPress={onPress}
       style={{ width }}
-      className={tappable ? "active:opacity-90" : undefined}
+      className="active:opacity-90"
     >
       <View
-        className="overflow-hidden rounded-2xl bg-white"
+        className="overflow-hidden rounded-2xl"
         style={{
-          aspectRatio: 16 / 9,
+          aspectRatio: cardRatio,
+          backgroundColor: "#FFF8F0", // cream fill behind contained images
           shadowColor: PRIMARY,
           shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.12,
@@ -156,10 +211,28 @@ function Slide({ slide, width }: { slide: HomeSlide; width: number }) {
           borderColor: "rgba(244,162,97,0.35)",
         }}
       >
+        {/* Soft blurred-ish backdrop using the same image stretched (only
+            shown when we letterbox, to avoid harsh cream bars). */}
+        {resizeMode === "contain" && (
+          <Image
+            source={{ uri: slide.imageUrl }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              opacity: 0.18,
+            }}
+            resizeMode="cover"
+            blurRadius={18}
+          />
+        )}
+
         <Image
           source={{ uri: slide.imageUrl }}
           style={{ width: "100%", height: "100%" }}
-          resizeMode="cover"
+          resizeMode={resizeMode}
         />
 
         {(slide.title || slide.subtitle) && (
@@ -171,9 +244,6 @@ function Slide({ slide, width }: { slide: HomeSlide; width: number }) {
               right: 0,
               bottom: 0,
               padding: 14,
-              // Dark gradient-ish veil for legible text. Two stacked
-              // translucent layers approximate a vertical gradient without
-              // pulling in expo-linear-gradient.
               backgroundColor: "rgba(0,0,0,0.35)",
             }}
           >
@@ -219,6 +289,6 @@ function Slide({ slide, width }: { slide: HomeSlide; width: number }) {
           }}
         />
       </View>
-    </Wrapper>
+    </Pressable>
   );
 }

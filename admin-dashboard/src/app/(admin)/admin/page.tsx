@@ -24,6 +24,19 @@ import {
   BookOpen,
   ArrowUpRight,
   Circle,
+  Trophy,
+  Disc3,
+  Sparkles,
+  Palette,
+  FileText,
+  User,
+  Users,
+  Home,
+  Library,
+  Sunrise,
+  PartyPopper,
+  Megaphone as MegaphoneIcon,
+  Cog,
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
@@ -237,22 +250,66 @@ export default function AdminOverviewPage() {
         </div>
       </section>
 
-      {/* ── SHORTCUTS ───────────────────────────────────────────────── */}
-      <section>
-        <SectionLabel label="Shortcuts" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Shortcut href="/admin/daily-niyam" icon={<NotebookPen size={16} />} label="नियम" />
-          <Shortcut href="/admin/daily" icon={<CalendarDays size={16} />} label="Daily" />
-          <Shortcut href="/admin/notifications" icon={<Bell size={16} />} label="Notify" />
-          <Shortcut href="/admin/announcements" icon={<Megaphone size={16} />} label="News" />
-          <Shortcut href="/admin/media" icon={<ImageIcon size={16} />} label="Media" />
-          <Shortcut href="/admin/slides" icon={<GalleryHorizontalEnd size={16} />} label="Slides" />
-          <Shortcut href="/admin/pravachans" icon={<Video size={16} />} label="Pravachans" />
-          <Shortcut href="/admin/reels" icon={<Film size={16} />} label="Reels" />
-          <Shortcut href="/admin/texts" icon={<BookOpen size={16} />} label="Texts" />
-          <Shortcut href="/admin/aahar-daan" icon={<QrCode size={16} />} label="Aahar Daan" />
-        </div>
-      </section>
+      {/* ── SHORTCUTS — grouped by section, matches sidebar ─────────── */}
+      <ShortcutGroup
+        title="Home Screen"
+        icon={<Home size={12} />}
+        items={[
+          { href: "/admin/announcements", icon: <Megaphone size={16} />, label: "Announcements" },
+          { href: "/admin/stories", icon: <Circle size={16} />, label: "Stories" },
+          { href: "/admin/slides", icon: <GalleryHorizontalEnd size={16} />, label: "Carousel" },
+        ]}
+      />
+
+      <ShortcutGroup
+        title="Content Library"
+        icon={<Library size={12} />}
+        items={[
+          { href: "/admin/pravachans", icon: <Video size={16} />, label: "Pravachans" },
+          { href: "/admin/reels", icon: <Film size={16} />, label: "Reels" },
+          { href: "/admin/media", icon: <ImageIcon size={16} />, label: "Media" },
+          { href: "/admin/texts", icon: <BookOpen size={16} />, label: "Texts" },
+          { href: "/admin/biography", icon: <User size={16} />, label: "Biography" },
+          { href: "/admin/kratiyas", icon: <FileText size={16} />, label: "कृतियाँ" },
+        ]}
+      />
+
+      <ShortcutGroup
+        title="Daily & Spiritual"
+        icon={<Sunrise size={12} />}
+        items={[
+          { href: "/admin/daily", icon: <CalendarDays size={16} />, label: "Daily" },
+          { href: "/admin/daily-niyam", icon: <NotebookPen size={16} />, label: "नियम" },
+          { href: "/admin/jaap", icon: <Disc3 size={16} />, label: "जाप मंत्र" },
+        ]}
+      />
+
+      <ShortcutGroup
+        title="Engagement"
+        icon={<PartyPopper size={12} />}
+        items={[
+          { href: "/admin/pratiyogita", icon: <Trophy size={16} />, label: "प्रतियोगिता" },
+          { href: "/admin/aahar-daan", icon: <QrCode size={16} />, label: "Aahar Daan" },
+        ]}
+      />
+
+      <ShortcutGroup
+        title="Users & Outreach"
+        icon={<MegaphoneIcon size={12} />}
+        items={[
+          { href: "/admin/registrations", icon: <Users size={16} />, label: "Registrations" },
+          { href: "/admin/notifications", icon: <Bell size={16} />, label: "Notifications" },
+        ]}
+      />
+
+      <ShortcutGroup
+        title="App Settings"
+        icon={<Cog size={12} />}
+        items={[
+          { href: "/admin/branding", icon: <Palette size={16} />, label: "Branding" },
+          { href: "/admin/splash", icon: <Sparkles size={16} />, label: "Splash Screen" },
+        ]}
+      />
     </div>
   );
 }
@@ -448,5 +505,41 @@ function SectionLabel({ label }: { label: string }) {
       </span>
       <span className="h-px flex-1 bg-neutral-200" />
     </div>
+  );
+}
+
+/* ─── Shortcut group — one row per sidebar category ─────────────────── */
+
+type ShortcutItem = { href: string; icon: React.ReactNode; label: string };
+
+function ShortcutGroup({
+  title,
+  icon,
+  items,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: ShortcutItem[];
+}) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-saffron">
+          {icon}
+          {title}
+        </span>
+        <span className="h-px flex-1 bg-neutral-200" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {items.map((it) => (
+          <Shortcut
+            key={it.href}
+            href={it.href}
+            icon={it.icon}
+            label={it.label}
+          />
+        ))}
+      </div>
+    </section>
   );
 }

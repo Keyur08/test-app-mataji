@@ -27,6 +27,7 @@ import { X } from "lucide-react-native";
 import { useDoc } from "../src/lib/useFirestore";
 import { useTheme } from "../src/lib/useBranding";
 import type { DailyPopupConfig, TimestampLike } from "../../shared/types";
+import { PhotoLightbox } from "./PhotoLightbox";
 
 const STORAGE_PREFIX = "daily_popup:dismissed:";
 
@@ -54,6 +55,7 @@ export function DailyPopup() {
   );
   const [visible, setVisible] = useState(false);
   const [imgLoading, setImgLoading] = useState(true);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   // Decide whether to show. The dismissal key combines today's date with the
   // image's `updatedAt` so a fresh upload reopens the popup even mid-day.
@@ -88,6 +90,8 @@ export function DailyPopup() {
     const link = data?.linkUrl?.trim();
     if (link) {
       Linking.openURL(link).catch(() => {});
+    } else {
+      setZoomOpen(true);
     }
   }
 
@@ -133,7 +137,6 @@ export function DailyPopup() {
         {/* Image */}
         <Pressable
           onPress={onTapImage}
-          disabled={!data.linkUrl}
           style={{
             width: "100%",
             maxWidth: 460,
@@ -186,6 +189,19 @@ export function DailyPopup() {
           Tap × to close for today
         </Text>
       </View>
+      {zoomOpen && data?.imageUrl ? (
+        <PhotoLightbox
+          photos={[
+            {
+              id: "daily-popup",
+              imageUrl: data.imageUrl,
+            } as never,
+          ]}
+          startIndex={0}
+          visible={zoomOpen}
+          onClose={() => setZoomOpen(false)}
+        />
+      ) : null}
     </Modal>
   );
 }

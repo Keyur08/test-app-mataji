@@ -70,14 +70,6 @@ async function sendViaFcm(
 ): Promise<{ success: number; failure: number; invalid: string[]; errors: string[] }> {
   if (tokens.length === 0)
     return { success: 0, failure: 0, invalid: [], errors: [] };
-// ⚠️ ADD THIS PROTECTION GUARD BLOCK:
-  if (!adminApp) {
-    console.error("Firebase Admin App is not initialized.");
-    return { success: 0, failure: 0, invalid: [], errors: ["Admin SDK not ready"] };
-  }
-
-// TypeScript now guarantees that adminApp is defined for this call
-
   const messaging = getMessaging(adminApp);
   let success = 0;
   let failure = 0;

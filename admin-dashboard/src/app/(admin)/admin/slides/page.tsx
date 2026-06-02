@@ -104,8 +104,13 @@ const ROUTE_TARGETS = [
   { value: "/library", label: "Library tab (/library)" },
   { value: "/audio", label: "Audio tab (/audio)" },
   { value: "/gallery", label: "Gallery tab (/gallery)" },
+  { value: "/jaap", label: "Jaap tab (/jaap)" },
+  { value: "/pratiyogita", label: "Pratiyogita (/pratiyogita)" },
+  { value: "/kratiyas", label: "Guru Maa ki Kratiya (/kratiyas)" },
   { value: "/news", label: "News list (/news)" },
+  { value: "/biography", label: "Biography (/biography)" },
   { value: "/contact", label: "Aahar Daan / Contact (/contact)" },
+  { value: "/profile", label: "My Profile (/profile)" },
 ];
 
 export default function ManageSlidesPage() {

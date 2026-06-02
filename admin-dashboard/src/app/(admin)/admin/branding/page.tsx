@@ -66,6 +66,7 @@ type BrandingDraft = {
   youtubeUrl: string;
   facebookUrl: string;
   instagramUrl: string;
+  shareAppUrl: string;
   themePrimary: string;
   themePrimaryDark: string;
   themeSaffron: string;
@@ -100,6 +101,7 @@ const DEFAULTS: BrandingDraft = {
   youtubeUrl: "",
   facebookUrl: "",
   instagramUrl: "",
+  shareAppUrl: "",
   themePrimary: "#B8336A",
   themePrimaryDark: "#A02D5F",
   themeSaffron: "#F4A261",
@@ -233,6 +235,7 @@ export default function BrandingAdminPage() {
         youtubeUrl: draft.youtubeUrl.trim(),
         facebookUrl: draft.facebookUrl.trim(),
         instagramUrl: draft.instagramUrl.trim(),
+        shareAppUrl: draft.shareAppUrl.trim(),
         themePrimary: draft.themePrimary.trim() || DEFAULTS.themePrimary,
         themePrimaryDark:
           draft.themePrimaryDark.trim() || DEFAULTS.themePrimaryDark,
@@ -642,6 +645,19 @@ export default function BrandingAdminPage() {
                 setDraft((d) => ({ ...d, instagramUrl: e.target.value }))
               }
               placeholder="https://instagram.com/..."
+            />
+          </Field>
+          <Field
+            label="App share link"
+            hint="Public Play Store / app landing URL appended to share messages (e.g. Pratiyogita share button)."
+          >
+            <Input
+              type="url"
+              value={draft.shareAppUrl}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, shareAppUrl: e.target.value }))
+              }
+              placeholder="https://play.google.com/store/apps/details?id=..."
             />
           </Field>
         </div>

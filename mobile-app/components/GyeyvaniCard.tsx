@@ -1,6 +1,7 @@
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Quote } from "lucide-react-native";
 import type { Gyeyvani } from "../../shared/types";
+import { ZoomableImage } from "./ZoomableImage";
 
 type Props = { gyeyvani: Gyeyvani | null; loading: boolean };
 
@@ -43,8 +44,9 @@ export function GyeyvaniCard({ gyeyvani, loading }: Props) {
                 borderColor: "rgba(244,162,97,0.4)",
               }}
             >
-              <Image
-                source={{ uri: gyeyvani.imageUrl }}
+              <ZoomableImage
+                uri={gyeyvani.imageUrl}
+                caption={gyeyvani.quote}
                 style={{ width: "100%", aspectRatio: 16 / 9 }}
                 resizeMode="cover"
               />

@@ -22,6 +22,8 @@ import { HomeStoriesRail } from "../../components/HomeStoriesRail";
 import { HomeCarousel } from "../../components/HomeCarousel";
 import { AaharDaanCard } from "../../components/AaharDaanCard";
 import { DailyNiyamCard } from "../../components/DailyNiyamCard";
+import { KratiyasCard } from "../../components/KratiyasCard";
+import { PratiyogitaCard } from "../../components/PratiyogitaCard";
 
 import { useCollection, useDoc } from "../../src/lib/useFirestore";
 import { useBranding, useTheme } from "../../src/lib/useBranding";
@@ -131,6 +133,12 @@ export default function HomeScreen() {
       <View className="mt-6">
         <DailyNiyamCard />
       </View>
+
+      {/* 3. Guru Maa ki Kratiya — admin PDF library (renders nothing if empty) */}
+      <KratiyasCard />
+
+      {/* 4. Pratiyogita — Daily Quiz Competition (renders nothing if none) */}
+      <PratiyogitaCard />
      
 
  

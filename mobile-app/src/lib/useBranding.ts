@@ -35,6 +35,7 @@ export const BRANDING_DEFAULTS: Required<
   youtubeUrl: "",
   facebookUrl: "",
   instagramUrl: "",
+  shareAppUrl: "",
   // --- Theme palette defaults (mirror tailwind.config.js) ---
   themePrimary: "#B8336A",
   themePrimaryDark: "#A02D5F",
@@ -91,6 +92,7 @@ export function useBranding(): ResolvedBranding {
       youtubeUrl: d.youtubeUrl?.trim() || "",
       facebookUrl: d.facebookUrl?.trim() || "",
       instagramUrl: d.instagramUrl?.trim() || "",
+      shareAppUrl: d.shareAppUrl?.trim() || "",
       themePrimary: normalizeHex(d.themePrimary) || BRANDING_DEFAULTS.themePrimary,
       themePrimaryDark:
         normalizeHex(d.themePrimaryDark) || BRANDING_DEFAULTS.themePrimaryDark,

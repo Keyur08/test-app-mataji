@@ -46,7 +46,7 @@ import {
   type UploadProgress,
 } from "@/lib/uploads";
 import { broadcastNotification } from "../notifications/actions";
-import { JaapMantrasEditor } from "./JaapMantrasEditor";
+
 
 type PanchangDoc = {
   date: string;
@@ -116,8 +116,6 @@ export default function DailyUpdatesPage() {
       <QuoteEditor date={date} />
 
       <DailyPopupEditor />
-
-      <JaapMantrasEditor />
 
       <RecentQuotesList onSelect={setDate} activeDate={date} />
     </div>

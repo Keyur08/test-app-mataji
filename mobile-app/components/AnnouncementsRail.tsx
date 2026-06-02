@@ -1,7 +1,9 @@
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { Link } from "expo-router";
-import { ArrowRight, CalendarDays, Megaphone, Newspaper } from "lucide-react-native";
-import type { NewsEvent } from "../../../shared/types";
+import { ArrowRight, CalendarDays, Maximize2, Megaphone, Newspaper } from "lucide-react-native";
+import { useState } from "react";
+import type { NewsEvent } from "../../shared/types";
+import { PhotoLightbox } from "./PhotoLightbox";
 
 type Kind = "announcement" | "event" | "news";
 type Props = {
@@ -48,6 +50,9 @@ export function AnnouncementsRail({
   const filtered = filterKind
     ? (items ?? []).filter((it) => (it.kind ?? "news") === filterKind)
     : items;
+
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+  const [zoomCaption, setZoomCaption] = useState<string | undefined>(undefined);
 
   return (
     <View>
@@ -149,6 +154,20 @@ export function AnnouncementsRail({
                           {meta.title}
                         </Text>
                       </View>
+                      {/* Zoom button — opens lightbox without navigating */}
+                      <Pressable
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          setZoomCaption(item.title);
+                          setZoomUrl(item.imageUrl!);
+                        }}
+                        hitSlop={8}
+                        accessibilityLabel="View image full screen"
+                        className="absolute right-3 top-3 h-7 w-7 items-center justify-center rounded-full active:opacity-70"
+                        style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+                      >
+                        <Maximize2 color="#fff" size={13} />
+                      </Pressable>
                     </View>
                   ) : (
                     <View
@@ -198,6 +217,16 @@ export function AnnouncementsRail({
           }}
         />
       )}
+      {zoomUrl ? (
+        <PhotoLightbox
+          photos={[
+            { id: "rail", imageUrl: zoomUrl, caption: zoomCaption } as never,
+          ]}
+          startIndex={0}
+          visible={!!zoomUrl}
+          onClose={() => setZoomUrl(null)}
+        />
+      ) : null}
     </View>
   );
 }

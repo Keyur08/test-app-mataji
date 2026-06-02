@@ -3,7 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AudioPlayerProvider } from "../src/lib/AudioPlayerProvider";
 import { MiniPlayer } from "../components/MiniPlayer";
 import { DailyPopup } from "../components/DailyPopup";
@@ -31,10 +31,27 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
+  // Show the configurable splash exactly once per app launch, before any
+  // auth gating kicks in. The splash screen itself routes onward when the
+  // devotee taps "Begin" (or auto-forwards when no splash is configured).
+  const splashShownRef = useRef(false);
+  useEffect(() => {
+    if (splashShownRef.current) return;
+    splashShownRef.current = true;
+    const seg0 = segments[0] as string | undefined;
+    // Don't bounce the user to /splash if they deep-linked somewhere
+    // specific (e.g. a notification tap into news/[id]).
+    if (!seg0 || seg0 === "(tabs)") {
+      router.replace("/splash" as never);
+    }
+  }, [router, segments]);
+
   useEffect(() => {
     if (status === "loading") return;
     const seg0 = segments[0] as string | undefined;
     const onAuthScreen = seg0 === "login" || seg0 === "register";
+    const onSplash = seg0 === "splash";
+    if (onSplash) return; // splash screen handles its own forwarding
     if (status === "missing" && !onAuthScreen) {
       // New device / no saved mobile → start with mobile-only login.
       // If the mobile is registered, login routes home directly; if not,
@@ -107,6 +124,10 @@ export default function RootLayout() {
               }}
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="splash"
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
               <Stack.Screen
                 name="login"
                 options={{ headerShown: false, gestureEnabled: false }}

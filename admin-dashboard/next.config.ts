@@ -4,13 +4,13 @@ import path from "node:path";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Turbopack workspace root setup
+  outputFileTracingRoot: path.resolve(__dirname, ".."),
   turbopack: {
     root: path.resolve(__dirname, ".."),
   },
 
   experimental: {
     // 🔑 FORCES NEXT.JS TO EMIT ASSET TRAILS RELATIVE TO MONOREPO ROOT
-    outputFileTracingRoot: path.resolve(__dirname, ".."),
   },
 
   output: "standalone",

@@ -669,7 +669,17 @@ export default function ProfileScreen() {
                 Sign out of this device
               </Text>
             </Pressable>
+            <View style={{
+              marginTop:2,
+              alignItems:"center",
+            }}>
+              <Text
+                  className="mt-4 text-center text-zinc-500">
+                Developed By: Yash Vinayaka
+              </Text>
+            </View>
           </View>
+
         ) : (
           <View style={{ marginTop: 18, flexDirection: "row", gap: 10 }}>
             <Pressable
@@ -718,6 +728,7 @@ export default function ProfileScreen() {
               </Text>
             </Pressable>
           </View>
+
         )}
       </ScrollView>
     </KeyboardAvoidingView>

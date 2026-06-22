@@ -241,6 +241,15 @@ export default function LoginScreen() {
           {"\n"}नए हैं? अगले चरण में कुछ जानकारी लेंगे।
         </Text>
       </View>
+        <View style={{
+            bottom:20,
+            alignItems:"center",
+        }}>
+               <Text
+                   className="mt-4 text-center text-zinc-500">
+                   Developed By: Yash Vinayaka
+               </Text>
+        </View>
     </KeyboardAvoidingView>
   );
 }

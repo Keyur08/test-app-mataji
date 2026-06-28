@@ -245,10 +245,6 @@ export default function LoginScreen() {
             bottom:20,
             alignItems:"center",
         }}>
-               <Text
-                   className="mt-4 text-center text-zinc-500">
-                   Developed By: Yash Vinayaka
-               </Text>
         </View>
     </KeyboardAvoidingView>
   );

@@ -673,10 +673,6 @@ export default function ProfileScreen() {
               marginTop:2,
               alignItems:"center",
             }}>
-              <Text
-                  className="mt-4 text-center text-zinc-500">
-                Developed By: Yash Vinayaka
-              </Text>
             </View>
           </View>
 

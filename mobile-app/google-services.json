@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "932184806507",
-    "project_id": "gyeshreemataji",
-    "storage_bucket": "gyeshreemataji.firebasestorage.app"
+    "project_number": "1066373562809",
+    "project_id": "mataji-59cbf",
+    "storage_bucket": "mataji-59cbf.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:932184806507:android:f4b64cf82ac869bc5b0d2e",
+        "mobilesdk_app_id": "1:1066373562809:android:336062b3c58bd74690f668",
         "android_client_info": {
           "package_name": "com.anonymous.mobileapp"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCrpMEfSeeHu4pFhZeS_vHvNQk3J3e8bGI"
+          "current_key": "AIzaSyALi6ZlgXIvQ-in1I8N7Bm5LLeSuujhLkA"
         }
       ],
       "services": {

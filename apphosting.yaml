@@ -15,37 +15,37 @@ scripts:
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyD0lfXZUbYQtKxQxgfgDMpt-7KD63bjKgk
+    value: AIzaSyBNb9AAgpi4gmB3GoJssnNfmkWWTNUmgNs
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: ://firebaseapp.com
+    value: mataji-59cbf.firebaseapp.com
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: gyeshreemataji
+    value: mataji-59cbf
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: gyeshreemataji.firebasestorage.app
+    value: mataji-59cbf.firebasestorage.app
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "932184806507"
+    value: "1066373562809"
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:932184806507:web:8f2065b1650d4b405b0d2e"
+    value: "1:1066373562809:web:423216cece1de35b90f668"
     availability:
       - BUILD
       - RUNTIME

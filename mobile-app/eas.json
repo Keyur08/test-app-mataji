@@ -25,12 +25,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD0lfXZUbYQtKxQxgfgDMpt-7KD63bjKgk",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "://firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "gyeshreemataji",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "gyeshreemataji.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "932184806507",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:932184806507:web:8f2065b1650d4b405b0d2e"
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBNb9AAgpi4gmB3GoJssnNfmkWWTNUmgNs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "mataji-59cbf.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "mataji-59cbf",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "mataji-59cbf.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1066373562809",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1066373562809:web:423216cece1de35b90f668",
+        "ANDROID_HOME": "/Users/yj/Library/Android/sdk"
       }
     },
     "production": {
@@ -43,19 +44,20 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD0lfXZUbYQtKxQxgfgDMpt-7KD63bjKgk",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "://firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "gyeshreemataji",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "gyeshreemataji.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "932184806507",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:932184806507:web:8f2065b1650d4b405b0d2e"
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBNb9AAgpi4gmB3GoJssnNfmkWWTNUmgNs",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "mataji-59cbf.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "mataji-59cbf",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "mataji-59cbf.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1066373562809",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1066373562809:web:423216cece1de35b90f668"
       }
     },
     "production-apk": {
       "channel": "production",
       "autoIncrement": true,
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     }
   },

@@ -1,11 +1,9 @@
 // Push notification setup for the Gey Mati Mata Ji app.
 //
-// We use `expo-notifications` which works in both Expo Go (Expo push tokens)
-// and custom dev/EAS builds (where Android also exposes a raw FCM device
-// token via getDevicePushTokenAsync()).
+// We use `expo-notifications` configured to fetch raw device tokens (FCM on Android, APNs on iOS)
+// so that the admin dashboard can send messages directly using the Firebase Admin SDK.
 //
-// Tokens are saved to Firestore at `push_tokens/<token>` so the admin
-// dashboard can broadcast to every registered device.
+// Tokens are saved to Firestore at `push_tokens/<token>`.
 
 import { Platform } from "react-native";
 import Constants from "expo-constants";
@@ -81,32 +79,34 @@ export async function registerForPushNotificationsAsync(): Promise<PushTokenInfo
   }
 
   try {
-    // Prefer Expo push tokens — they work for both APNs + FCM via Expo's
-    // delivery service and survive Expo Go.
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId;
-
-    const tokenRes = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined
-    );
-
+    // Primary Choice: Get native device token (FCM on Android, APNs on iOS)
+    // This allows your Firebase Admin dashboard to communicate directly via Firebase Admin SDK.
+    const dev = await Notifications.getDevicePushTokenAsync();
     return {
-      token: tokenRes.data,
-      type: "expo",
+      token: typeof dev.data === "string" ? dev.data : String(dev.data),
+      type: Platform.OS === "android" ? "fcm" : "apns",
       platform: Platform.OS as "ios" | "android",
     };
   } catch (err) {
-    // Fallback: raw device token (Android = FCM, iOS = APNs).
+    // Fallback: If native retrieval fails (e.g., inside the Expo Go sandbox client app),
+    // we fall back to the Expo push token so things don't completely crash during testing.
     try {
-      const dev = await Notifications.getDevicePushTokenAsync();
+      console.warn("[push] Failed native token fetch, trying Expo fallback...", err);
+      const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ??
+          Constants.easConfig?.projectId;
+
+      const tokenRes = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+      );
+
       return {
-        token: typeof dev.data === "string" ? dev.data : String(dev.data),
-        type: Platform.OS === "android" ? "fcm" : "apns",
+        token: tokenRes.data,
+        type: "expo",
         platform: Platform.OS as "ios" | "android",
       };
     } catch (inner) {
-      console.warn("[push] Failed to obtain a push token:", err, inner);
+      console.warn("[push] Failed to obtain any push token:", err, inner);
       return null;
     }
   }
@@ -120,17 +120,17 @@ export async function registerForPushNotificationsAsync(): Promise<PushTokenInfo
 export async function savePushToken(info: PushTokenInfo): Promise<void> {
   try {
     await setDoc(
-      doc(db, "push_tokens", info.token),
-      {
-        token: info.token,
-        type: info.type,
-        platform: info.platform,
-        deviceName: Device.deviceName ?? null,
-        osName: Device.osName ?? null,
-        osVersion: Device.osVersion ?? null,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
+        doc(db, "push_tokens", info.token),
+        {
+          token: info.token,
+          type: info.type,
+          platform: info.platform,
+          deviceName: Device.deviceName ?? null,
+          osName: Device.osName ?? null,
+          osVersion: Device.osVersion ?? null,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
     );
   } catch (err) {
     console.warn("[push] Failed to save token:", err);
@@ -139,15 +139,9 @@ export async function savePushToken(info: PushTokenInfo): Promise<void> {
 
 /**
  * Map a notification's `data` payload to an in-app route.
- *
- * Conventions (set by the admin dashboard when broadcasting):
- *   { type: "news",  id: "abc123" }   → /news/abc123
- *   { type: "quote" }                 → /                (home tab)
- *   { type: "niyam", date: "2026-05-23" } → /            (home tab — niyam card)
- *   { url: "gmmapp://news/abc" }      → parsed fallback
  */
 function routeFromNotification(
-  data: Record<string, unknown> | null | undefined,
+    data: Record<string, unknown> | null | undefined,
 ): string | null {
   if (!data) return null;
   const type = typeof data.type === "string" ? data.type : "";
@@ -170,29 +164,17 @@ function routeFromNotification(
 
 /**
  * Install global listeners that navigate the app when the user taps a
- * notification. Call this once from the root layout.
- *
- * - Cold start (app launched by tap) — handled via
- *   `getLastNotificationResponseAsync`.
- * - Warm start (tap while running) — handled via
- *   `addNotificationResponseReceivedListener`.
- *
- * Uses `useRootNavigationState()` so navigation only fires once the root
- * navigator has actually mounted (avoids a "router not ready" no-op on
- * cold start).
+ * notification.
  */
 export function useNotificationTapHandler(): void {
   const navState = useRootNavigationState();
   const isReady = !!navState?.key;
 
-  // Queue a pending route until the navigator is ready.
   const pendingRouteRef = useRef<string | null>(null);
-  // Track which notification IDs we've already handled so cold-start +
-  // listener don't double-fire for the same tap.
   const handledIdsRef = useRef<Set<string>>(new Set());
 
   const handleResponse = (
-    response: Notifications.NotificationResponse | null,
+      response: Notifications.NotificationResponse | null,
   ) => {
     if (!response) return;
     const reqId = response.notification.request.identifier;
@@ -200,8 +182,8 @@ export function useNotificationTapHandler(): void {
     handledIdsRef.current.add(reqId);
 
     const data = response.notification.request.content.data as
-      | Record<string, unknown>
-      | undefined;
+        | Record<string, unknown>
+        | undefined;
     const path = routeFromNotification(data);
     if (!path) return;
 
@@ -212,13 +194,11 @@ export function useNotificationTapHandler(): void {
     }
   };
 
-  // Flush any pending route as soon as the navigator becomes ready.
   useEffect(() => {
     if (!isReady) return;
     const pending = pendingRouteRef.current;
     if (pending) {
       pendingRouteRef.current = null;
-      // Microtask so the first render of the navigator settles first.
       requestAnimationFrame(() => router.push(pending as never));
     }
   }, [isReady]);
@@ -228,25 +208,22 @@ export function useNotificationTapHandler(): void {
 
     let cancelled = false;
 
-    // Cold start: app was launched by tapping a notification.
     Notifications.getLastNotificationResponseAsync()
-      .then((response) => {
-        if (cancelled) return;
-        handleResponse(response);
-      })
-      .catch(() => {
-        /* no-op */
-      });
+        .then((response) => {
+          if (cancelled) return;
+          handleResponse(response);
+        })
+        .catch(() => {
+          /* no-op */
+        });
 
-    // Warm start: user tapped a notification while the app was running.
     const sub = Notifications.addNotificationResponseReceivedListener(
-      (response) => handleResponse(response),
+        (response) => handleResponse(response),
     );
 
     return () => {
       cancelled = true;
       sub.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady]);
 }

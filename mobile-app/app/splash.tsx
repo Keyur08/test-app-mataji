@@ -84,7 +84,7 @@ export default function SplashScreen() {
   // Loading state — keep the saffron/cream theme so it doesn't flash white.
   // Only block on `ready`; when enabled but assets are missing, still render
   // the splash UI (CTA still works, user can proceed).
-  if (!ready || !enabled) {
+  if (!enabled) {
     return (
         <View className="flex-1 items-center justify-center bg-cream">
           <ActivityIndicator size="large" color="#B8336A" />

@@ -47,7 +47,7 @@ type PersistedCache = {
 };
 
 const EMPTY_STATE: SplashState = {
-  ready: false,
+  ready: true,
   enabled: true,
   localImageUri: null,
   localAudioUri: null,

@@ -10,5 +10,8 @@
   "scripts": {
     "build:admin": "npm run build --prefix admin-dashboard",
     "start:admin": "npm start --prefix admin-dashboard"
+  },
+  "dependencies": {
+    "expo": "^56.0.12"
   }
 }

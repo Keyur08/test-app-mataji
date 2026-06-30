@@ -35,6 +35,7 @@ export default function RootLayout() {
   // auth gating kicks in. The splash screen itself routes onward when the
   // devotee taps "Begin" (or auto-forwards when no splash is configured).
   const splashShownRef = useRef(false);
+  const splashActiveRef = useRef(true);
   useEffect(() => {
     if (splashShownRef.current) return;
     splashShownRef.current = true;
@@ -43,11 +44,21 @@ export default function RootLayout() {
     // specific (e.g. a notification tap into news/[id]).
     if (!seg0 || seg0 === "(tabs)") {
       router.replace("/splash" as never);
+    }else{
+        splashActiveRef.current = false
     }
   }, [router, segments]);
 
+  useEffect(()=>{
+      const seg0 = segments[0] as string|undefined
+      if(seg0 && seg0 !=='splash'){
+          splashActiveRef.current = false
+      }
+  },[segments])
+
   useEffect(() => {
     if (status === "loading") return;
+    if(splashActiveRef.current)return;
     const seg0 = segments[0] as string | undefined;
     const onAuthScreen = seg0 === "login" || seg0 === "register";
     const onSplash = seg0 === "splash";

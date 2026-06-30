@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { Directory, File, Paths } from "expo-file-system";
 
 import { db } from "./firebase";
@@ -130,24 +130,52 @@ export function useSplashManager(): SplashState {
   const [state, setState] = useState<SplashState>(EMPTY_STATE);
   const hydratedRef = useRef(false);
 
-  // 1) Hydrate from AsyncStorage so the very first paint of /splash has
-  //    something to show, even before the Firestore snapshot arrives.
+  // 1) Hydrate from cache, then fall back to a one-shot getDoc.
+  //    `getDoc` is a plain Promise (not a subscription) so it is immune to
+  //    `onSnapshot` cleanup that React Strict Mode triggers before the
+  //    listener callback fires.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // ── Try AsyncStorage cache first (instant, works offline) ──
       const cached = await readCache();
       if (cancelled) return;
       hydratedRef.current = true;
       if (cached) {
         const imgOk = fileLooksValid(cached.localImageUri);
         const audOk = fileLooksValid(cached.localAudioUri);
-        setState((prev) => ({
-          ...prev,
-          enabled: cached.enabled,
-          localImageUri: imgOk ? cached.localImageUri : null,
-          localAudioUri: audOk ? cached.localAudioUri : null,
-          targetRoute: cached.targetRoute || "/",
-        }));
+        if (imgOk || audOk) {
+          setState({
+            ready: true,
+            enabled: cached.enabled,
+            localImageUri: imgOk ? cached.localImageUri : null,
+            localAudioUri: audOk ? cached.localAudioUri : null,
+            targetRoute: cached.targetRoute || "/",
+          });
+          return; // cache is valid — onSnapshot will refresh in the background
+        }
+      }
+
+      // ── No usable cache — one-shot getDoc as primary ready source ──
+      try {
+        const ref = doc(db, "app_config", "splash");
+        const snap = await getDoc(ref);
+        if (cancelled) return;
+        const data = snap.exists() ? (snap.data() as SplashConfig) : null;
+        const enabled = data?.enabled !== false;
+        const targetRoute = (data?.targetRoute?.trim()) || "/";
+        setState({
+          ready: true,
+          enabled,
+          localImageUri: data?.imageUrl ?? null,
+          localAudioUri: data?.audioUrl ?? null,
+          targetRoute,
+        });
+      } catch {
+        // Even on failure, mark ready so the app never hangs.
+        if (!cancelled) {
+          setState((prev) => ({ ...prev, ready: true }));
+        }
       }
     })();
     return () => {
@@ -155,107 +183,133 @@ export function useSplashManager(): SplashState {
     };
   }, []);
 
+  // Safety timeout — if neither cache nor Firestore has resolved within
+  // 5 seconds, force `ready: true` so the app never hangs on the spinner.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setState((prev) => {
+        if (prev.ready) return prev;
+        return { ...prev, ready: true };
+      });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // 2) Subscribe to the Firestore doc and refresh the cache when the
   //    server's `updatedAt` differs from the locally persisted value.
   useEffect(() => {
     const ref = doc(db, "app_config", "splash");
     const unsub = onSnapshot(
-      ref,
-      async (snap) => {
-        const data = (snap.exists() ? (snap.data() as SplashConfig) : null);
-        const enabled = data?.enabled !== false; // default true
-        const targetRoute =
-          (data?.targetRoute && data.targetRoute.trim()) || "/";
+        ref,
+        async (snap) => {
+          const data = (snap.exists() ? (snap.data() as SplashConfig) : null);
+          const enabled = data?.enabled !== false; // default true
+          const targetRoute =
+              (data?.targetRoute && data.targetRoute.trim()) || "/";
 
-        // No doc / disabled / no assets → publish what we have but mark ready.
-        if (!data || !enabled || (!data.imageUrl && !data.audioUrl)) {
+          // ── Mark ready IMMEDIATELY with remote URLs ──
+          // This must happen BEFORE any `await` so that even if the component
+          // unmounts (React Strict Mode) or downloads hang, the splash renders.
+          setState({
+            ready: true,
+            enabled,
+            localImageUri: data?.imageUrl ?? null,
+            localAudioUri: data?.audioUrl ?? null,
+            targetRoute,
+          });
+
+          // Nothing to cache if there are no assets.
+          if (!data || !data.imageUrl && !data.audioUrl) return;
+
+          // ── Background: try to cache assets locally ──
+          try {
+            let serverMs: number | null = null;
+            const ts = data.updatedAt as unknown as {
+              toMillis?: () => number;
+              seconds?: number;
+            } | null;
+            if (ts && typeof ts.toMillis === "function") {
+              serverMs = ts.toMillis();
+            } else if (ts && typeof ts.seconds === "number") {
+              serverMs = ts.seconds * 1000;
+            }
+
+            const cached = await readCache();
+            const needsRefresh =
+                !cached ||
+                cached.lastSavedSplashUpdate !== serverMs ||
+                !fileLooksValid(cached.localImageUri) ||
+                !fileLooksValid(cached.localAudioUri) ||
+                (!!data.imageUrl && !cached.localImageUri) ||
+                (!!data.audioUrl && !cached.localAudioUri);
+
+            if (!needsRefresh && cached) {
+              // Upgrade to local URIs if they are valid.
+              const imgOk = fileLooksValid(cached.localImageUri);
+              const audOk = fileLooksValid(cached.localAudioUri);
+              if (imgOk || audOk) {
+                setState((prev) => ({
+                  ...prev,
+                  localImageUri: imgOk ? cached.localImageUri : prev.localImageUri,
+                  localAudioUri: audOk ? cached.localAudioUri : prev.localAudioUri,
+                }));
+              }
+              return;
+            }
+
+            // Download fresh copies with a per-file timeout so we never hang.
+            const dir = ensureSplashDir();
+            const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+                Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))]);
+
+            const [newImg, newAud] = await Promise.all([
+              data.imageUrl
+                  ? withTimeout(downloadInto(dir, data.imageUrl, fileNameFor("image", data.imageUrl)), 15000)
+                  : Promise.resolve(null),
+              data.audioUrl
+                  ? withTimeout(downloadInto(dir, data.audioUrl, fileNameFor("audio", data.audioUrl)), 15000)
+                  : Promise.resolve(null),
+            ]);
+
+            const finalImg = newImg ?? (data.imageUrl ?? null);
+            const finalAud = newAud ?? (data.audioUrl ?? null);
+
+            await writeCache({
+              lastSavedSplashUpdate: serverMs,
+              localImageUri: finalImg,
+              localAudioUri: finalAud,
+              enabled,
+              targetRoute,
+            });
+
+            // Upgrade URIs to the downloaded local versions.
+            setState((prev) => ({
+              ...prev,
+              localImageUri: finalImg,
+              localAudioUri: finalAud,
+            }));
+          } catch {
+            // Already ready with remote URLs — background caching failed, that's OK.
+          }
+        },
+        async () => {
+          // On Firestore error, try to use cached assets so the splash can
+          // still render. Only mark ready — never leave the app hanging.
           const cached = await readCache();
-          setState({
-            ready: true,
-            enabled,
-            localImageUri:
-              cached && fileLooksValid(cached.localImageUri)
-                ? cached.localImageUri
-                : null,
-            localAudioUri:
-              cached && fileLooksValid(cached.localAudioUri)
-                ? cached.localAudioUri
-                : null,
-            targetRoute,
-          });
-          return;
-        }
-
-        // Compare `updatedAt` against the persisted marker.
-        // `TimestampLike` from Firestore exposes `toMillis()`.
-        let serverMs: number | null = null;
-        const ts = data.updatedAt as unknown as {
-          toMillis?: () => number;
-          seconds?: number;
-        } | null;
-        if (ts && typeof ts.toMillis === "function") {
-          serverMs = ts.toMillis();
-        } else if (ts && typeof ts.seconds === "number") {
-          serverMs = ts.seconds * 1000;
-        }
-
-        const cached = await readCache();
-        const needsRefresh =
-          !cached ||
-          cached.lastSavedSplashUpdate !== serverMs ||
-          !fileLooksValid(cached.localImageUri) ||
-          !fileLooksValid(cached.localAudioUri) ||
-          // Switching to a remote URL we haven't downloaded yet.
-          (!!data.imageUrl && !cached.localImageUri) ||
-          (!!data.audioUrl && !cached.localAudioUri);
-
-        if (!needsRefresh && cached) {
-          setState({
-            ready: true,
-            enabled,
-            localImageUri: cached.localImageUri,
-            localAudioUri: cached.localAudioUri,
-            targetRoute,
-          });
-          return;
-        }
-
-        // Download fresh copies. Fall back to remote URL if the download
-        // failed but a URL is present, so the splash can still render.
-        const dir = ensureSplashDir();
-        const [newImg, newAud] = await Promise.all([
-          data.imageUrl
-            ? downloadInto(dir, data.imageUrl, fileNameFor("image", data.imageUrl))
-            : Promise.resolve(null),
-          data.audioUrl
-            ? downloadInto(dir, data.audioUrl, fileNameFor("audio", data.audioUrl))
-            : Promise.resolve(null),
-        ]);
-
-        const finalImg = newImg ?? (data.imageUrl ?? null);
-        const finalAud = newAud ?? (data.audioUrl ?? null);
-
-        await writeCache({
-          lastSavedSplashUpdate: serverMs,
-          localImageUri: finalImg,
-          localAudioUri: finalAud,
-          enabled,
-          targetRoute,
-        });
-
-        setState({
-          ready: true,
-          enabled,
-          localImageUri: finalImg,
-          localAudioUri: finalAud,
-          targetRoute,
-        });
-      },
-      async () => {
-        // On Firestore error, still mark ready so the app doesn't hang
-        // on the splash gate forever.
-        setState((prev) => ({ ...prev, ready: true }));
-      },
+          if (cached) {
+            const imgOk = fileLooksValid(cached.localImageUri);
+            const audOk = fileLooksValid(cached.localAudioUri);
+            setState({
+              ready: true,
+              enabled: cached.enabled,
+              localImageUri: imgOk ? cached.localImageUri : null,
+              localAudioUri: audOk ? cached.localAudioUri : null,
+              targetRoute: cached.targetRoute || "/",
+            });
+          } else {
+            setState((prev) => ({ ...prev, ready: true }));
+          }
+        },
     );
     return unsub;
   }, []);

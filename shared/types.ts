@@ -495,6 +495,12 @@ export interface BrandingConfig {
   facebookUrl?: string;
   /** Instagram profile URL. */
   instagramUrl?: string;
+  /**
+   * Public link to install / open the mobile app (Play Store, deep link, or
+   * web landing). Used by share sheets across the app (e.g. Pratiyogita).
+   * If empty, share messages will omit the link.
+   */
+  shareAppUrl?: string;
 
   // --- Theme / color palette (all hex strings like "#B8336A") ---
   /** Brand primary color (CTA backgrounds, headings). Default "#B8336A". */
@@ -512,6 +518,31 @@ export interface BrandingConfig {
   /** Top header background color. Default "#FFF8F0". */
   themeHeaderBg?: string;
 
+  updatedAt?: TimestampLike;
+}
+
+/**
+ * Intelligent configurable splash screen — single doc at
+ * `app_config/splash`. The mobile app downloads the image + audio to
+ * `FileSystem.documentDirectory` on first launch and re-downloads only
+ * when `updatedAt` changes (compared against AsyncStorage). When the
+ * devotee taps "Begin", the app routes to `targetRoute` if logged in,
+ * else to `/login`.
+ */
+export interface SplashConfig {
+  /** Public HTTPS image URL (cover artwork). */
+  imageUrl?: string;
+  imageStoragePath?: string;
+  /** Public HTTPS audio URL (mp3 / m4a). Plays on splash mount. */
+  audioUrl?: string;
+  audioStoragePath?: string;
+  /**
+   * In-app route to push when devotee taps "Begin" (e.g. `/`, `/jaap`,
+   * `/pratiyogita`). Defaults to `/` (Home tab).
+   */
+  targetRoute?: string;
+  /** When false, the splash is skipped entirely. Default true. */
+  enabled?: boolean;
   updatedAt?: TimestampLike;
 }
 
@@ -572,3 +603,122 @@ export interface DailyNiyamAccept {
   uid: string;
   acceptedAt: TimestampLike;
 }
+
+/**
+ * Guru Maa ki Kratiya — admin-uploaded PDF library. One Firestore doc per
+ * PDF at `kratiyas/{autoId}`. The mobile Home tab has a card that opens
+ * `/kratiyas` (list + search). Tapping a row opens `/kratiyas/[id]` which
+ * renders the PDF full-screen via WebView and offers a "Download" action.
+ */
+export interface Kratiya {
+  /** Auto-generated Firestore doc id. */
+  id?: string;
+  /** Display title (Hindi/English). */
+  title: string;
+  /** Optional short description / author / series. */
+  description?: string;
+  /** Cover image (shown on the home card + list rows). */
+  coverUrl?: string | null;
+  coverStoragePath?: string | null;
+  /** The actual PDF download URL. */
+  pdfUrl: string;
+  pdfStoragePath?: string | null;
+  /** Original file name (for the "Download as" hint). */
+  pdfFileName?: string;
+  /** File size in bytes (for the list row). */
+  pdfSize?: number;
+  /** Manual ordering — lower numbers float to the top. Defaults to 0. */
+  order?: number;
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+}
+
+/* ============================================================================
+ * Pratiyogita — Daily Quiz Competition
+ *
+ *   • Collection `quizzes/{quizId}` — one document per quiz (typically one
+ *     per day). Public read while running (without `correctOptionIndex`);
+ *     admins manage writes.
+ *   • Sub-collection `quizzes/{quizId}/results/{mobile}` — devotee
+ *     submissions. A devotee can submit at most once per quiz.
+ *   • Collection `quiz_settings/{key}` — reusable global defaults (rules,
+ *     prize template) the admin can pull into a new quiz with one click.
+ *     Suggested doc ids: `default_rules`, `default_prize`.
+ * ============================================================================ */
+
+/** A single multiple-choice question stored inside a quiz document. */
+export interface QuizQuestion {
+  /** Stable id used as the React key + for the per-question answer map. */
+  id: string;
+  question: string;
+  /** 2–6 options. */
+  options: string[];
+  /** Index into `options` — the correct answer. Stripped client-side while
+   *  the quiz is `running` (see security rules / data hygiene below). */
+  correctOptionIndex: number;
+  /** Optional one-line explanation shown on the "Past" review screen. */
+  explanation?: string;
+}
+
+export interface QuizPrize {
+  title: string;
+  description?: string;
+  imageUrl?: string | null;
+  imageStoragePath?: string | null;
+}
+
+/** Mirrored on the doc so Firestore queries (e.g. "list past quizzes ordered
+ *  by date desc") stay cheap. The admin form keeps it in sync. */
+export type QuizStatus = "upcoming" | "running" | "past";
+
+export interface Quiz {
+  id?: string;
+  /** The "live" day for this quiz. */
+  date: TimestampLike;
+  startsAt: TimestampLike;
+  endsAt: TimestampLike;
+  status: QuizStatus;
+
+  title: string;
+  description?: string;
+  imageUrl?: string | null;
+  imageStoragePath?: string | null;
+
+  rules?: string;
+  prize?: QuizPrize;
+
+  questions: QuizQuestion[];
+
+  /** Denormalised counters maintained by the submission flow. */
+  participantCount?: number;
+  /** Cached questions.length for headline displays. */
+  totalQuestions?: number;
+
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+}
+
+/** One submission. Doc id IS the devotee's 10-digit mobile (matches
+ *  `users/{mobile}`), so each devotee can submit at most once per quiz. */
+export interface QuizResult {
+  id?: string;
+  mobile: string;
+  name?: string;
+  uid: string;
+  /** Index chosen for each question, keyed by question id. */
+  answers: Record<string, number>;
+  score: number;
+  total: number;
+  /** Time the devotee took, in ms (optional client telemetry). */
+  durationMs?: number;
+  submittedAt: TimestampLike;
+}
+
+/** Reusable defaults the admin drops into a new quiz with one click. */
+export interface QuizSettings {
+  id?: string;
+  rules?: string;
+  prize?: QuizPrize;
+  updatedAt?: TimestampLike;
+}
+

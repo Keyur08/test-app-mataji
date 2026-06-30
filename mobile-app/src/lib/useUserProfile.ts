@@ -45,12 +45,16 @@ export async function setActiveMobile(mobile: string | null) {
 
 export function useUserProfile() {
   const [uid, setUid] = useState<string | null>(
-    () => auth.currentUser?.uid ?? null,
+      () => auth.currentUser?.uid ?? null,
   );
   const [mobile, setMobile] = useState<string | null>(cachedMobile);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [status, setStatus] = useState<ProfileStatus>("loading");
   const [authError, setAuthError] = useState<string | null>(null);
+  // Tracks whether AsyncStorage has been read. Until this is true,
+  // we must NOT flip status to "missing" — mobile might just be
+  // loading from storage.
+  const [mobileChecked, setMobileChecked] = useState(false);
 
   // 1) Track the Firebase Auth session, but DO NOT create one automatically.
   //    A new anonymous UID is only created when the devotee actually
@@ -59,17 +63,17 @@ export function useUserProfile() {
   //    that we need to read from Firestore (see effect below).
   useEffect(() => {
     const unsub = onAuthStateChanged(
-      auth,
-      (u) => {
-        setUid(u?.uid ?? null);
-        if (u) setAuthError(null);
-      },
-      (err: any) => {
-        // eslint-disable-next-line no-console
-        console.warn("[useUserProfile] onAuthStateChanged error:", err);
-        setAuthError(err?.message || "auth/listener-error");
-        setStatus("missing");
-      },
+        auth,
+        (u) => {
+          setUid(u?.uid ?? null);
+          if (u) setAuthError(null);
+        },
+        (err: any) => {
+          // eslint-disable-next-line no-console
+          console.warn("[useUserProfile] onAuthStateChanged error:", err);
+          setAuthError(err?.message || "auth/listener-error");
+          setStatus("missing");
+        },
     );
     return unsub;
   }, []);
@@ -86,8 +90,8 @@ export function useUserProfile() {
     ensureAnonymousUser().catch((err: any) => {
       // eslint-disable-next-line no-console
       console.warn(
-        "[useUserProfile] ensureAnonymousUser (returning user) failed:",
-        err?.code || err?.message || err,
+          "[useUserProfile] ensureAnonymousUser (returning user) failed:",
+          err?.code || err?.message || err,
       );
       setAuthError(err?.code || err?.message || "auth/unknown");
       setStatus("missing");
@@ -98,15 +102,19 @@ export function useUserProfile() {
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(ACTIVE_MOBILE_KEY)
-      .then((m) => {
-        if (cancelled) return;
-        cachedMobile = m;
-        setMobile(m);
-        if (!m) setStatus("missing");
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("missing");
-      });
+        .then((m) => {
+          if (cancelled) return;
+          cachedMobile = m;
+          setMobile(m);
+          setMobileChecked(true);
+          if (!m) setStatus("missing");
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setMobileChecked(true);
+            setStatus("missing");
+          }
+        });
 
     const cb = (m: string | null) => setMobile(m);
     mobileListeners.add(cb);
@@ -119,42 +127,42 @@ export function useUserProfile() {
   // 3) Subscribe to `users/{mobile}` once we know the mobile.
   useEffect(() => {
     if (!mobile) {
-      // Sign-out path: the active mobile was cleared. Drop any cached
-      // profile and flip back to "missing" so the root layout sends the
-      // devotee through /login → /register instead of bouncing them to
-      // the home tabs on the stale "ready" status.
-      setProfile(null);
-      setStatus("missing");
+      // Only set "missing" if we've actually finished reading AsyncStorage.
+      // Otherwise mobile might just be loading — keep status as "loading".
+      if (mobileChecked) {
+        setProfile(null);
+        setStatus("missing");
+      }
       return;
     }
     const ref = doc(db, "users", mobile);
     const unsub = onSnapshot(
-      ref,
-      (snap) => {
-        if (snap.exists()) {
-          setProfile({
-            uid: uid ?? "",
-            ...(snap.data() as Omit<UserProfile, "uid">),
-          });
-          setStatus("ready");
-        } else {
-          // Mobile remembered but doc was deleted server-side → re-register.
+        ref,
+        (snap) => {
+          if (snap.exists()) {
+            setProfile({
+              uid: uid ?? "",
+              ...(snap.data() as Omit<UserProfile, "uid">),
+            });
+            setStatus("ready");
+          } else {
+            // Mobile remembered but doc was deleted server-side → re-register.
+            setProfile(null);
+            setStatus("missing");
+          }
+        },
+        (err: any) => {
+          // eslint-disable-next-line no-console
+          console.warn(
+              "[useUserProfile] users snapshot error:",
+              err?.code || err?.message || err,
+          );
           setProfile(null);
           setStatus("missing");
-        }
-      },
-      (err: any) => {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "[useUserProfile] users snapshot error:",
-          err?.code || err?.message || err,
-        );
-        setProfile(null);
-        setStatus("missing");
-      },
+        },
     );
     return unsub;
-  }, [mobile, uid]);
+  }, [mobile, uid, mobileChecked]);
 
   // 4) Safety timeout.
   useEffect(() => {
@@ -162,7 +170,7 @@ export function useUserProfile() {
     const t = setTimeout(() => {
       // eslint-disable-next-line no-console
       console.warn(
-        "[useUserProfile] loading timeout reached, falling back to 'missing'",
+          "[useUserProfile] loading timeout reached, falling back to 'missing'",
       );
       setStatus("missing");
     }, LOADING_TIMEOUT_MS);

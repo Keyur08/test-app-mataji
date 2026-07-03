@@ -517,7 +517,7 @@ export interface BrandingConfig {
   themeTextOnPrimary?: string;
   /** Top header background color. Default "#FFF8F0". */
   themeHeaderBg?: string;
-
+  marqueeString?:string;
   updatedAt?: TimestampLike;
 }
 

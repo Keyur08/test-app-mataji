@@ -44,6 +44,7 @@ export const BRANDING_DEFAULTS: Required<
   themeAccent: "#A0522D",
   themeTextOnPrimary: "#FFFFFF",
   themeHeaderBg: "#FFF8F0",
+  marqueeString:""
 };
 
 export type ResolvedBranding = typeof BRANDING_DEFAULTS & {
@@ -104,6 +105,7 @@ export function useBranding(): ResolvedBranding {
         BRANDING_DEFAULTS.themeTextOnPrimary,
       themeHeaderBg:
         normalizeHex(d.themeHeaderBg) || BRANDING_DEFAULTS.themeHeaderBg,
+       marqueeString: d.marqueeString?.trim()||""
     };
   }, [data]);
 }

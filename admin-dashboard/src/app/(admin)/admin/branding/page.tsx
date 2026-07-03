@@ -74,6 +74,7 @@ type BrandingDraft = {
   themeAccent: string;
   themeTextOnPrimary: string;
   themeHeaderBg: string;
+  marqueeString: string;
 };
 
 const DEFAULTS: BrandingDraft = {
@@ -109,6 +110,7 @@ const DEFAULTS: BrandingDraft = {
   themeAccent: "#A0522D",
   themeTextOnPrimary: "#FFFFFF",
   themeHeaderBg: "#FFF8F0",
+  marqueeString:""
 };
 
 function setAt<T>(arr: T[], i: number, v: T): T[] {
@@ -245,6 +247,7 @@ export default function BrandingAdminPage() {
         themeTextOnPrimary:
           draft.themeTextOnPrimary.trim() || DEFAULTS.themeTextOnPrimary,
         themeHeaderBg: draft.themeHeaderBg.trim() || DEFAULTS.themeHeaderBg,
+        marqueeString: draft.marqueeString.trim(),
         updatedAt: serverTimestamp(),
       };
 
@@ -658,6 +661,18 @@ export default function BrandingAdminPage() {
                 setDraft((d) => ({ ...d, shareAppUrl: e.target.value }))
               }
               placeholder="https://play.google.com/store/apps/details?id=..."
+            />
+          </Field>
+          <Field
+              label="Marquee Running Text"
+              hint="Continuous scrolling message displayed on the mobile app's home screen banner."
+          >
+            <Input
+                value={draft.marqueeString}
+                onChange={(e) =>
+                    setDraft((d) => ({ ...d, marqueeString: e.target.value }))
+                }
+                placeholder="e.g. 🔥 महत्वपूर्ण सूचना: आगामी शिविर की तिथियां घोषित कर दी गई हैं • "
             />
           </Field>
         </div>

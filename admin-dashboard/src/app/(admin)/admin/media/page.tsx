@@ -1312,7 +1312,7 @@ function PhotosSection() {
                   <button
                     type="button"
                     onClick={() => handleDelete(it)}
-                    className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 opacity-0 shadow transition group-hover:opacity-100 hover:bg-white"
+                    className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600  shadow transition group-hover:opacity-100 hover:bg-white"
                     title="Delete"
                   >
                     <Trash2 size={14} />

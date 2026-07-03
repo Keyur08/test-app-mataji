@@ -35,6 +35,7 @@ import type {
   Gyeyvani,
   NewsEvent,
 } from "../../../shared/types";
+import {Marquee} from "../../components/Marquee";
 
 const todayId = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -88,7 +89,8 @@ export default function HomeScreen() {
       {/* Instagram-style configurable story circles — sits in the gap
           between the navigation header and the rest of the home content. */}
       <HomeStoriesRail />
-
+        {/* Marquee  */}
+    <Marquee  text={branding.marqueeString}></Marquee>
       {/* Greeting hero */}
       <View className="pt-7">
         <View className="flex-row items-center">

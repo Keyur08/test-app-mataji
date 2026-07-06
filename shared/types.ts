@@ -13,11 +13,11 @@ export interface TimestampLike {
 }
 
 export type ContentCategory =
-  | "bhajan"
-  | "lecture"
-  | "article"
-  | "video"
-  | "audio";
+    | "bhajan"
+    | "lecture"
+    | "article"
+    | "video"
+    | "audio";
 
 export interface ContentItem {
   id: string;
@@ -102,6 +102,10 @@ export interface Bhajan {
   id: string;
   title: string;
   artist?: string;
+  /** Firestore doc id from `bhajan_categories/{id}`. */
+  categoryId?: string;
+  /** Denormalised category name for display / fallback. */
+  categoryName?: string;
   /** Public HTTPS URL to the audio file (mp3/m4a). */
   audioUrl: string;
   /** Optional cover art URL. */
@@ -111,6 +115,14 @@ export interface Bhajan {
   /** Display order — lower numbers first. */
   order?: number;
   createdAt?: TimestampLike;
+}
+
+export interface BhajanCategory {
+  id: string;
+  name: string;
+  order?: number;
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
 }
 
 /**
@@ -254,10 +266,10 @@ export interface AaharDaanRegistration {
  * mobile Home screen. Admins configure these from /admin/stories.
  */
 export type HomeStoryLinkType =
-  | "tab"
-  | "gallery-section"
-  | "route"
-  | "url";
+    | "tab"
+    | "gallery-section"
+    | "route"
+    | "url";
 
 export interface HomeStory {
   id: string;
@@ -517,8 +529,9 @@ export interface BrandingConfig {
   themeTextOnPrimary?: string;
   /** Top header background color. Default "#FFF8F0". */
   themeHeaderBg?: string;
-  marqueeString?:string;
+
   updatedAt?: TimestampLike;
+  marqueeString?:string;
 }
 
 /**
@@ -549,6 +562,23 @@ export interface SplashConfig {
 export type Gender = "male" | "female" | "other";
 export type MaritalStatus = "married" | "unmarried";
 
+export interface UserJaapMantraCounter {
+  count?: number;
+  malas?: number;
+  target?: number;
+  label?: string;
+  updatedAt?: TimestampLike | string;
+}
+
+export interface UserJaapActivity {
+  selectedMantraLabel?: string;
+  target?: number;
+  totalCount?: number;
+  totalMalas?: number;
+  byMantra?: Record<string, UserJaapMantraCounter>;
+  updatedAt?: TimestampLike | string;
+}
+
 /**
  * Devotee profile captured by the mandatory registration screen shown on
  * first app launch (before the Home tab). Stored at `users/{mobile}` where
@@ -576,6 +606,8 @@ export interface UserProfile {
   marriageDate?: string;
   createdAt: TimestampLike;
   updatedAt?: TimestampLike;
+  /** Per-mantra Jaap counters synced from the mobile Jaap screen. */
+  jaapActivity?: UserJaapActivity;
 }
 
 /**
@@ -721,4 +753,3 @@ export interface QuizSettings {
   prize?: QuizPrize;
   updatedAt?: TimestampLike;
 }
-

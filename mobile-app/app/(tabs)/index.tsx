@@ -90,7 +90,9 @@ export default function HomeScreen() {
           between the navigation header and the rest of the home content. */}
       <HomeStoriesRail />
         {/* Marquee  */}
-    <Marquee  text={branding.marqueeString}></Marquee>
+      {branding.marqueeString && branding.marqueeString.trim().length > 0 && (
+          <Marquee text={branding.marqueeString} />
+      )}
       {/* Greeting hero */}
       <View className="pt-7">
         <View className="flex-row items-center">

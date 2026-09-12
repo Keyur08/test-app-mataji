@@ -1,5 +1,6 @@
 import { Image, Pressable, Text, View } from "react-native";
 import { Pause, Play, SkipForward, X } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudio } from "../src/lib/AudioPlayerProvider";
 
 /**
@@ -8,9 +9,13 @@ import { useAudio } from "../src/lib/AudioPlayerProvider";
  *
  * Mount once near the root, above the tab bar.
  */
-export function MiniPlayer({ bottomOffset = 64 }: { bottomOffset?: number }) {
+export function MiniPlayer({ bottomOffset }: { bottomOffset?: number }) {
   const { current, isPlaying, isBuffering, position, duration, toggle, next, stop } =
     useAudio();
+  const insets = useSafeAreaInsets();
+  // Matches the tab bar's height (64 + bottom inset) in (tabs)/_layout.tsx
+  // so the player floats just above it, including on 3-button-nav Android devices.
+  const resolvedBottomOffset = bottomOffset ?? 64 + insets.bottom;
 
   if (!current) return null;
 
@@ -21,7 +26,7 @@ export function MiniPlayer({ bottomOffset = 64 }: { bottomOffset?: number }) {
     <View
       pointerEvents="box-none"
       className="absolute left-0 right-0 px-3"
-      style={{ bottom: bottomOffset + 8 }}
+      style={{ bottom: resolvedBottomOffset + 8 }}
     >
       <View className="overflow-hidden rounded-2xl border border-primary/15 bg-white shadow-lg">
         {/* progress bar */}

@@ -15,11 +15,19 @@ type FieldProps = {
   hint?: string;
   required?: boolean;
   children: ReactNode;
+  /** Set to "div" when `children` contains more than one form control (e.g.
+   *  a toolbar with its own <select>s) — a wrapping <label> with no `for`
+   *  redirects clicks anywhere inside it to the first labelable descendant,
+   *  which steals focus from everything else. Defaults to "label", which
+   *  gives the standard click-label-to-focus-input behavior for simple
+   *  single-control fields. */
+  as?: "label" | "div";
 };
 
-export function Field({ label, hint, required, children }: FieldProps) {
+export function Field({ label, hint, required, children, as = "label" }: FieldProps) {
+  const Wrapper = as;
   return (
-    <label className="block">
+    <Wrapper className="block">
       <span className="mb-1 block text-sm font-medium text-neutral-700">
         {label} {required && <span className="text-primary">*</span>}
       </span>
@@ -27,7 +35,7 @@ export function Field({ label, hint, required, children }: FieldProps) {
       {hint && (
         <span className="mt-1 block text-xs text-neutral-500">{hint}</span>
       )}
-    </label>
+    </Wrapper>
   );
 }
 

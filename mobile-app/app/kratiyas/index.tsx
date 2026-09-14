@@ -1,14 +1,14 @@
-// Searchable list of all "Guru Maa ki Kratiya" PDFs. Tapping a row opens
+// Searchable grid of all "Guru Maa ki Kratiya" PDFs. Tapping a card opens
 // `/kratiyas/[id]` (full-screen PDF reader + download).
 
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Pressable,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { BookOpen, FileText, Search } from "lucide-react-native";
@@ -26,8 +26,23 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+const NUM_COLUMNS = 3;
+const GRID_GAP = 12;
+const SCREEN_PADDING = 20; // matches ScreenContainer's horizontal px-5
+// Fixed pixel sizes (rather than aspectRatio) so every card comes out
+// exactly the same height regardless of image load state or title length.
+const CARD_IMAGE_HEIGHT = 116;
+const CARD_TITLE_HEIGHT = 56;
+
 export default function KratiyasListScreen() {
   const theme = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  // A literal pixel width (not a percentage) so the card's size can never be
+  // influenced by its own content — text always wraps inside it instead of
+  // growing it.
+  const cardWidth =
+    (windowWidth - SCREEN_PADDING * 2 - GRID_GAP * (NUM_COLUMNS - 1)) /
+    NUM_COLUMNS;
   const { data, loading } = useCollection<Kratiya>("kratiyas", {
     orderByField: "order",
     orderDir: "asc",
@@ -55,7 +70,7 @@ export default function KratiyasListScreen() {
           headerTitleStyle: { fontWeight: "800" },
         }}
       />
-      <ScreenContainer>
+      <ScreenContainer scroll>
         {/* Search bar */}
         <View
           style={{
@@ -87,8 +102,26 @@ export default function KratiyasListScreen() {
           />
         </View>
 
+        {!loading && data && data.length > 0 ? (
+          <Text
+            style={{
+              marginTop: 16,
+              marginBottom: 2,
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              color: theme.saffron,
+            }}
+          >
+            {search
+              ? `${filtered.length} result${filtered.length === 1 ? "" : "s"}`
+              : `${data.length} kratiya${data.length === 1 ? "" : "s"}`}
+          </Text>
+        ) : null}
+
         {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
+          <View style={{ paddingVertical: 60, alignItems: "center" }}>
             <ActivityIndicator color={theme.primary} />
           </View>
         ) : filtered.length === 0 ? (
@@ -128,27 +161,37 @@ export default function KratiyasListScreen() {
             </Text>
           </View>
         ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id!}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingVertical: 12, gap: 12 }}
-            renderItem={({ item }) => (
-              <KratiyaRow item={item} theme={theme} />
-            )}
-          />
+          <View
+            style={{
+              marginTop: 12,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: GRID_GAP,
+            }}
+          >
+            {filtered.map((item) => (
+              <KratiyaCard
+                key={item.id}
+                item={item}
+                theme={theme}
+                width={cardWidth}
+              />
+            ))}
+          </View>
         )}
       </ScreenContainer>
     </>
   );
 }
 
-function KratiyaRow({
+function KratiyaCard({
   item,
   theme,
+  width,
 }: {
   item: Kratiya;
   theme: ReturnType<typeof useTheme>;
+  width: number;
 }) {
   return (
     <Link
@@ -157,87 +200,104 @@ function KratiyaRow({
     >
       <Pressable
         style={({ pressed }) => ({
-          flexDirection: "row",
-          gap: 12,
-          padding: 12,
+          width,
+          flexGrow: 0,
+          flexShrink: 0,
+          // The "border" is drawn as a colored padding box rather than the
+          // native `border` style — combining borderWidth + borderRadius +
+          // elevation on one Android view is unreliable and can make the
+          // border invisible. This approach always renders correctly.
+          padding: 3,
           borderRadius: 16,
-          backgroundColor: "#FFFFFF",
-          borderWidth: 1,
-          borderColor: theme.saffron + "55",
+          backgroundColor: pressed ? theme.primary : theme.saffron,
           shadowColor: theme.primary,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: pressed ? 0.06 : 0.12,
-          shadowRadius: 8,
-          elevation: pressed ? 1 : 3,
-          transform: [{ scale: pressed ? 0.99 : 1 }],
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: pressed ? 0.06 : 0.14,
+          shadowRadius: 9,
+          elevation: pressed ? 1 : 4,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
         })}
       >
         <View
           style={{
-            width: 72,
-            height: 96,
-            borderRadius: 10,
+            borderRadius: 13,
             overflow: "hidden",
-            backgroundColor: theme.cream,
-            borderWidth: 1,
-            borderColor: theme.saffron + "55",
+            backgroundColor: "#FFFFFF",
           }}
         >
-          {item.coverUrl ? (
-            <Image
-              source={{ uri: item.coverUrl }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-          ) : (
-            <View
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <FileText color={theme.saffron} size={28} />
-            </View>
-          )}
-        </View>
-
-        <View style={{ flex: 1, justifyContent: "center" }}>
-          <Text
-            numberOfLines={2}
-            style={{
-              color: theme.primary,
-              fontSize: 15,
-              fontWeight: "800",
-            }}
-          >
-            {item.title}
-          </Text>
-          {item.description ? (
-            <Text
-              numberOfLines={2}
-              style={{ color: theme.accent, fontSize: 12, marginTop: 4 }}
-            >
-              {item.description}
-            </Text>
-          ) : null}
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 6,
+              width: "100%",
+              height: CARD_IMAGE_HEIGHT,
+              backgroundColor: theme.cream,
             }}
           >
-            <FileText color={theme.saffron} size={12} />
-            <Text
+            {item.coverUrl ? (
+              <Image
+                source={{ uri: item.coverUrl }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <FileText color={theme.saffron} size={22} />
+              </View>
+            )}
+
+            <View
               style={{
-                color: theme.accent,
-                fontSize: 11,
-                fontWeight: "600",
+                position: "absolute",
+                left: 5,
+                bottom: 5,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 3,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 6,
+                paddingHorizontal: 5,
+                paddingVertical: 2,
+                maxWidth: "90%",
               }}
             >
-              PDF{item.pdfSize ? ` · ${formatBytes(item.pdfSize)}` : ""}
+              <FileText color="#FFFFFF" size={9} />
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 9,
+                  fontWeight: "700",
+                }}
+              >
+                PDF{item.pdfSize ? ` · ${formatBytes(item.pdfSize)}` : ""}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={{
+              height: CARD_TITLE_HEIGHT,
+              padding: 8,
+              justifyContent: "center",
+              borderTopWidth: 1,
+              borderTopColor: theme.saffron + "30",
+            }}
+          >
+            <Text
+              numberOfLines={2}
+              style={{
+                color: theme.primary,
+                fontSize: 12,
+                fontWeight: "800",
+                lineHeight: 15,
+              }}
+            >
+              {item.title}
             </Text>
           </View>
         </View>

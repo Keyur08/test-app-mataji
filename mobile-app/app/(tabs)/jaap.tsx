@@ -619,7 +619,7 @@ export default function JaapScreen() {
       else Alert.alert("Invalid target", msg);
       return;
     }
-    if (parsed > 100000) {
+    if (parsed > 200000) {
       const msg = "Please enter a smaller number.";
       if (Platform.OS === "web") window.alert(msg);
       else Alert.alert("Too large", msg);
@@ -1097,7 +1097,7 @@ export default function JaapScreen() {
                     flexWrap: "wrap",
                   }}
               >
-                {[9, 27, 54, 108, 1008].map((preset) => (
+                {[9, 27, 54, 108, 1008, 125000].map((preset) => (
                     <Pressable
                         key={preset}
                         onPress={() => setTargetInput(String(preset))}

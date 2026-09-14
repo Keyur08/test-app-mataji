@@ -137,8 +137,13 @@ export interface LibraryText {
   category: string;
   /** Optional short description shown in the list. */
   subtitle?: string;
-  /** Full text body in Devanagari (or any language). Stored as plain text
-   *  with `\n` line breaks. */
+  /** Full text body in Devanagari (or any language). Content saved from the
+   *  admin dashboard's rich text editor is HTML (headings, bold/italic/
+   *  underline/strikethrough, alignment, lists, blockquote, colored/sized
+   *  text, images, etc). Older documents may still hold the original plain
+   *  text format (`**bold**`, `*italic*`, `==highlight==`, `![alt](url)`,
+   *  `\n` line breaks) — see `shared/richText.ts#looksLikeHtml` for how both
+   *  the admin dashboard and mobile app tell the two formats apart. */
   body: string;
   /** Optional language tag, e.g. "hi", "en". */
   language?: string;

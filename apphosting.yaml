@@ -2,16 +2,11 @@
 runtime: nodejs
 
 runConfig:
-  rootDirectory: /
+  rootDirectory: admin-dashboard
   minInstances: 0
   maxInstances: 1
   cpu: 1
   memoryMiB: 512
-
-# Explicitly installs local subfolder node_modules before compiling code
-scripts:
-  buildCommand: npm install --prefix admin-dashboard && npm run build --prefix admin-dashboard
-  runCommand: npm run start --prefix admin-dashboard
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
